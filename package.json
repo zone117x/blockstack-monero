@@ -1,0 +1,30 @@
+{
+  "name": "blockstack-monero",
+  "version": "0.0.1",
+  "description": "Client-side Monero wallet using Blockstack and the MyMonero API",
+  "main": "dist/index.js",
+  "dependencies": {
+    "@types/request": "^2.48.1",
+    "async": "2.6.1",
+    "bignumber.js": "^8.0.1",
+    "request": "^2.88.0"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.3",
+    "typescript": "^3.1.6"
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zone117x/blockstack-monero.git"
+  },
+  "author": "Matthew Little",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zone117x/blockstack-monero/issues"
+  },
+  "homepage": "https://github.com/zone117x/blockstack-monero#readme"
+}

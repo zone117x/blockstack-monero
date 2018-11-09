@@ -1,0 +1,4 @@
+[submodule "libs/mymonero-app-js"]
+	path = libs/mymonero-app-js
+	url = git@github.com:mymonero/mymonero-app-js.git
+	branch = master
