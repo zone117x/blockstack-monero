@@ -3,6 +3,7 @@ import BackgroundResponseParser from '../libs/mymonero-app-js/local_modules/Host
 import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils } from '../libs/mymonero-app-js/local_modules/mymonero_core_js';
 import request from 'request';
 import { BigNumber } from 'bignumber.js';
+import moment from 'moment';
 
 interface IWalletData {
 	publicAddress: string;
@@ -20,17 +21,39 @@ interface ISendFundsResult {
 	mixin;
 }
 
-interface IWalletInfoResult {
-	totalReceived: BigNumber,
-	lockedBalance: BigNumber,
-	totalSent: BigNumber,
-	spentOutputs: any[],
+interface ICommonResultValues {
 	accountScannedTxHeight: number,
 	accountScannedBlockHeight: number,
 	accountScanStartHeight: number,
 	transactionHeight: number,
 	blockchainHeight: number,
+}
+
+interface IWalletInfoResult extends ICommonResultValues {
+	totalReceived: BigNumber,
+	lockedBalance: BigNumber,
+	totalSent: BigNumber,
+	spentOutputs: any[],
 	ratesBySymbol: {symbol: string, rate: number}[]
+}
+
+interface ITransactionsResult extends ICommonResultValues {
+	transactions: ITransactionInfo[]
+}
+
+interface ITransactionInfo {
+	amount: BigNumber,
+	coinbase: boolean,
+	hash: string,
+	height: number,
+	id: number,
+	mempool: boolean,
+	mixin: number,
+	timestamp: Date,
+	totalReceived: BigNumber,
+	totalSent: BigNumber,
+	unlockTime: number,
+	paymentId: string | null
 }
 
 class MoneroWallet {
@@ -60,6 +83,7 @@ class MoneroWallet {
 
 	getWalletInfo() : Promise<any> {
 
+		// Wrap the client callback oriented function in a Promise.
 		return new Promise((resolve, reject) => {
 			try {
 				this._apiClient.AddressInfo_returningRequestHandle(
@@ -98,6 +122,65 @@ class MoneroWallet {
 				);
 			}
 			catch (err) {
+				// Internal error.
+				reject(err);
+			}
+		});
+	}
+
+	getTransactions() : Promise<ITransactionsResult> {
+
+		// Wrap the client callback oriented function in a Promise.
+		return new Promise((resolve, reject) => {
+			try {
+				this._apiClient.AddressTransactions_returningRequestHandle(
+					this._walletData.publicAddress,
+					this._walletData.privateKeys.view,
+					this._walletData.publicKeys.spend,
+					this._walletData.privateKeys.spend,
+					(err,
+						accountScannedHeight,
+						accountScannedBlockHeight,
+						accountScanStartHeight,
+						transactionHeight,
+						blockchainHeight, 
+						transactions: any[]) => {
+
+						if (err) {
+							reject(err);
+						}
+
+						// Convert some properties on the transaction object to be more useful for us.
+						let txs = transactions.map(tx => <ITransactionInfo>{
+							amount: new BigNumber(tx.amount.toString()),
+							totalReceived: new BigNumber(tx.total_received.toString()),
+							totalSent: new BigNumber(tx.total_sent.toString()),
+							coinbase: tx.coinbase,
+							hash: tx.hash,
+							height: tx.height,
+							id: tx.id,
+							mempool: tx.mempool,
+							mixin: tx.mixin,
+							timestamp: tx.timestamp,
+							unlockTime: tx.unlock_time
+						});
+
+						// Turn these unruly callback function args into an object. 
+						let result : ITransactionsResult = {
+							accountScannedTxHeight: accountScannedHeight,
+							accountScannedBlockHeight: accountScannedBlockHeight,
+							accountScanStartHeight: accountScanStartHeight,
+							transactionHeight: transactionHeight,
+							blockchainHeight: blockchainHeight,
+							transactions: txs
+						};
+
+						resolve(result);
+					}
+				);
+			}
+			catch (err) {
+				// Internal error.
 				reject(err);
 			}
 		});
@@ -174,10 +257,12 @@ let wallet : IWalletData = {
 	}
 };
 
+// TODO: find the utility to convert raw private key bytes from blockstack to a monero seed.
 
 let moneroWallet = new MoneroWallet(wallet);
 
 async function tests() {
+	let txs = await moneroWallet.getTransactions();
 	let walletInfo = await moneroWallet.getWalletInfo();
 	console.log(walletInfo);
 	await moneroWallet.sendFunds(toAddress, new BigNumber("0.0001"));

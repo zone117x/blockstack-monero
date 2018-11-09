@@ -43,6 +43,7 @@ var BackgroundResponseParser_web_1 = __importDefault(require("../libs/mymonero-a
 var mymonero_core_js_1 = require("../libs/mymonero-app-js/local_modules/mymonero_core_js");
 var request_1 = __importDefault(require("request"));
 var bignumber_js_1 = require("bignumber.js");
+var moment_1 = __importDefault(require("moment"));
 var MoneroWallet = /** @class */ (function () {
     function MoneroWallet(walletData) {
         this._walletData = walletData;
@@ -61,6 +62,7 @@ var MoneroWallet = /** @class */ (function () {
     }
     MoneroWallet.prototype.getWalletInfo = function () {
         var _this = this;
+        // Wrap the client callback oriented function in a Promise.
         return new Promise(function (resolve, reject) {
             try {
                 _this._apiClient.AddressInfo_returningRequestHandle(_this._walletData.publicAddress, _this._walletData.privateKeys.view, _this._walletData.publicKeys.spend, _this._walletData.privateKeys.spend, function (err) {
@@ -90,6 +92,48 @@ var MoneroWallet = /** @class */ (function () {
                 });
             }
             catch (err) {
+                // Internal error.
+                reject(err);
+            }
+        });
+    };
+    MoneroWallet.prototype.getTransactions = function () {
+        var _this = this;
+        // Wrap the client callback oriented function in a Promise.
+        return new Promise(function (resolve, reject) {
+            try {
+                _this._apiClient.AddressTransactions_returningRequestHandle(_this._walletData.publicAddress, _this._walletData.privateKeys.view, _this._walletData.publicKeys.spend, _this._walletData.privateKeys.spend, function (err, accountScannedHeight, accountScannedBlockHeight, accountScanStartHeight, transactionHeight, blockchainHeight, transactions) {
+                    if (err) {
+                        reject(err);
+                    }
+                    var ff = transactions[0].timestamp instanceof Date;
+                    var txs = transactions.map(function (tx) { return ({
+                        amount: new bignumber_js_1.BigNumber(tx.amount.toString()),
+                        totalReceived: new bignumber_js_1.BigNumber(tx.total_received.toString()),
+                        totalSent: new bignumber_js_1.BigNumber(tx.total_sent.toString()),
+                        coinbase: tx.coinbase,
+                        hash: tx.hash,
+                        height: tx.height,
+                        id: tx.id,
+                        mempool: tx.mempool,
+                        mixin: tx.mixin,
+                        timestamp: moment_1.default(tx.timestamp).toDate(),
+                        unlockTime: tx.unlock_time
+                    }); });
+                    // Turn these unruly function args into an object. 
+                    var result = {
+                        accountScannedTxHeight: accountScannedHeight,
+                        accountScannedBlockHeight: accountScannedBlockHeight,
+                        accountScanStartHeight: accountScanStartHeight,
+                        transactionHeight: transactionHeight,
+                        blockchainHeight: blockchainHeight,
+                        transactions: txs
+                    };
+                    resolve(result);
+                });
+            }
+            catch (err) {
+                // Internal error.
                 reject(err);
             }
         });
@@ -145,18 +189,24 @@ var wallet = {
         spend: "3eb884d3440d71326e27cc07a861b873e72abd339feb654660c36a008a0028b3"
     }
 };
+// TODO: find how to get a user friendly list of tx history.
+// use hostedMoneroAPIClient.AddressTransactions_returningRequestHandle
+// TODO: find the utility to convert raw private key bytes from blockstack to a monero seed.
 var moneroWallet = new MoneroWallet(wallet);
 function tests() {
     return __awaiter(this, void 0, void 0, function () {
-        var walletInfo;
+        var txs, walletInfo;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, moneroWallet.getWalletInfo()];
+                case 0: return [4 /*yield*/, moneroWallet.getTransactions()];
                 case 1:
+                    txs = _a.sent();
+                    return [4 /*yield*/, moneroWallet.getWalletInfo()];
+                case 2:
                     walletInfo = _a.sent();
                     console.log(walletInfo);
                     return [4 /*yield*/, moneroWallet.sendFunds(toAddress, new bignumber_js_1.BigNumber("0.0001"))];
-                case 2:
+                case 3:
                     _a.sent();
                     return [2 /*return*/];
             }
