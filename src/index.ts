@@ -1,9 +1,8 @@
-import HostedMoneroAPIClient from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient.Lite';
+import HostedMoneroAPIClient from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient_Base';
 import BackgroundResponseParser from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/BackgroundResponseParser.web';
-import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise } from '../libs/mymonero-app-js/local_modules/mymonero_core_js/index';
+import * as mymonero_core from '../libs/mymonero-app-js/local_modules/mymonero_core_js/index';
 import request from 'request';
 import { BigNumber } from 'bignumber.js';
-import moment from 'moment';
 
 const DEBUG = true;
 
@@ -35,8 +34,9 @@ interface IAccountStateInfo {
 
 interface IBalanceInfoResult extends IAccountStateInfo {
 	totalReceived: BigNumber,
-	lockedBalance: BigNumber,
 	totalSent: BigNumber,
+	lockedBalance: BigNumber,
+	balance: BigNumber,
 	spentOutputs: any[],
 	ratesBySymbol: {symbol: string, rate: number}[]
 }
@@ -80,7 +80,7 @@ class MoneroUtilLoader {
 
 	static async load() {
 		if (!this._util) {
-			this._util = await monero_utils_promise;
+			this._util = await mymonero_core.monero_utils_promise;
 		}
 	}
 }
@@ -128,10 +128,10 @@ class MoneroWallet {
 	/** Gets the network type value expected by monero_utils. */
 	static getNetworkID(testnet: boolean) {
 		if (testnet) {
-			return nettype_utils.network_type.TESTNET;
+			return mymonero_core.nettype_utils.network_type.TESTNET;
 		}
 		else {
-			return nettype_utils.network_type.MAINNET;
+			return mymonero_core.nettype_utils.network_type.MAINNET;
 		}
 	}
 
@@ -208,9 +208,10 @@ class MoneroWallet {
 						let info : IBalanceInfoResult = {
 
 							// These amount values are in integer (small units / piconero), convert to human readable string.
-							totalReceived: monero_amount_format_utils.formatMoney(result[0]),
-							lockedBalance: monero_amount_format_utils.formatMoney(result[1]),
-							totalSent: monero_amount_format_utils.formatMoney(result[2]),
+							totalReceived: mymonero_core.monero_amount_format_utils.formatMoney(result[0]),
+							lockedBalance: mymonero_core.monero_amount_format_utils.formatMoney(result[1]),
+							totalSent: mymonero_core.monero_amount_format_utils.formatMoney(result[2]),
+							balance: mymonero_core.monero_amount_format_utils.formatMoney(result[0].subtract(result[2])),
 
 							spentOutputs: result[3],
 
@@ -304,7 +305,7 @@ class MoneroWallet {
 				const paymentId = null;
 				const isSweep : boolean = false;
 
-				monero_sendingFunds_utils.SendFunds(
+				mymonero_core.monero_sendingFunds_utils.SendFunds(
 					toAddress,
 					networkType,
 					amountString,
@@ -317,7 +318,7 @@ class MoneroWallet {
 					txPriority,
 					code => {
 						// Intermediate status callback..
-						console.log("Send funds step " + code + ": " + monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code])
+						console.log("Send funds step " + code + ": " + mymonero_core.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code])
 					},
 					(...result) => {
 						// Transaction successful callback..
@@ -369,3 +370,19 @@ tests().then(result => {
 .catch(err => {
 	console.log(err);
 });
+
+/*
+ GUI TODO
+
+ * Show list of transactions (link to a block explorer).
+ * Show address/key details modal.
+ * Send transaction modal.
+ * Manual refresh button.
+ * Refresh every 30s.
+ * 
+ * 
+
+ Experiment:
+ * Porting monero js code for the features (unspent output processing, tx key image process) to C# and in Blazor.
+
+ */

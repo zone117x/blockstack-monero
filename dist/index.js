@@ -10,12 +10,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const HostedMoneroAPIClient_Lite_1 = __importDefault(require("../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient.Lite"));
+const HostedMoneroAPIClient_Base_1 = __importDefault(require("../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient_Base"));
 const BackgroundResponseParser_web_1 = __importDefault(require("../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/BackgroundResponseParser.web"));
-const index_1 = require("../libs/mymonero-app-js/local_modules/mymonero_core_js/index");
+const mymonero_core = __importStar(require("../libs/mymonero-app-js/local_modules/mymonero_core_js/index"));
 const request_1 = __importDefault(require("request"));
 const bignumber_js_1 = require("bignumber.js");
+// { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise }
 const DEBUG = true;
 /**
  * Caches the asynchronous loaded monero_utils object.
@@ -34,7 +42,7 @@ class MoneroUtilLoader {
     static load() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this._util) {
-                this._util = yield index_1.monero_utils_promise;
+                this._util = yield mymonero_core.monero_utils_promise;
             }
         });
     }
@@ -66,15 +74,15 @@ class MoneroWallet {
             backgroundAPIResponseParser: new BackgroundResponseParser_web_1.default()
         };
         // Instantiate an instance of the MyMonero API client.
-        this._apiClient = new HostedMoneroAPIClient_Lite_1.default(apiClientOptions, apiClientContext);
+        this._apiClient = new HostedMoneroAPIClient_Base_1.default(apiClientOptions, apiClientContext);
     }
     /** Gets the network type value expected by monero_utils. */
     static getNetworkID(testnet) {
         if (testnet) {
-            return index_1.nettype_utils.network_type.TESTNET;
+            return mymonero_core.nettype_utils.network_type.TESTNET;
         }
         else {
-            return index_1.nettype_utils.network_type.MAINNET;
+            return mymonero_core.nettype_utils.network_type.MAINNET;
         }
     }
     /** Generates a new set of account keys. */
@@ -132,9 +140,10 @@ class MoneroWallet {
                     // Whip this argument list into a manageable object.
                     let info = {
                         // These amount values are in integer (small units / piconero), convert to human readable string.
-                        totalReceived: index_1.monero_amount_format_utils.formatMoney(result[0]),
-                        lockedBalance: index_1.monero_amount_format_utils.formatMoney(result[1]),
-                        totalSent: index_1.monero_amount_format_utils.formatMoney(result[2]),
+                        totalReceived: mymonero_core.monero_amount_format_utils.formatMoney(result[0]),
+                        lockedBalance: mymonero_core.monero_amount_format_utils.formatMoney(result[1]),
+                        totalSent: mymonero_core.monero_amount_format_utils.formatMoney(result[2]),
+                        balance: mymonero_core.monero_amount_format_utils.formatMoney(result[0].subtract(result[2])),
                         spentOutputs: result[3],
                         accountScannedTxHeight: result[4],
                         accountScannedBlockHeight: result[5],
@@ -204,9 +213,9 @@ class MoneroWallet {
                 const txPriority = 1; // normal priority
                 const paymentId = null;
                 const isSweep = false;
-                index_1.monero_sendingFunds_utils.SendFunds(toAddress, networkType, amountString, isSweep, this._addressKeys.publicAddress, this._addressKeys.privateKeys, this._addressKeys.publicKeys, this._apiClient, paymentId, txPriority, code => {
+                mymonero_core.monero_sendingFunds_utils.SendFunds(toAddress, networkType, amountString, isSweep, this._addressKeys.publicAddress, this._addressKeys.privateKeys, this._addressKeys.publicKeys, this._apiClient, paymentId, txPriority, code => {
                     // Intermediate status callback..
-                    console.log("Send funds step " + code + ": " + index_1.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code]);
+                    console.log("Send funds step " + code + ": " + mymonero_core.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code]);
                 }, (...result) => {
                     // Transaction successful callback..
                     resolve({
@@ -261,6 +270,8 @@ tests().then(result => {
  *
  *
 
+ Experiment:
+ * Porting monero js code for the features (unspent output processing, tx key image process) to C# and in Blazor.
 
  */
 //# sourceMappingURL=index.js.map
