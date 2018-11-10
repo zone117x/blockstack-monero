@@ -1,6 +1,6 @@
 import HostedMoneroAPIClient from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient.Lite';
 import BackgroundResponseParser from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/BackgroundResponseParser.web';
-import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise } from '../libs/mymonero-app-js/local_modules/mymonero_core_js';
+import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise } from '../libs/mymonero-app-js/local_modules/mymonero_core_js/index';
 import request from 'request';
 import { BigNumber } from 'bignumber.js';
 import moment from 'moment';
