@@ -43,10 +43,59 @@ var BackgroundResponseParser_web_1 = __importDefault(require("../libs/mymonero-a
 var mymonero_core_js_1 = require("../libs/mymonero-app-js/local_modules/mymonero_core_js");
 var request_1 = __importDefault(require("request"));
 var bignumber_js_1 = require("bignumber.js");
-var moment_1 = __importDefault(require("moment"));
+var DEBUG = true;
+/**
+ * Caches the asynchronous loaded monero_utils object.
+ *
+ * @remarks
+ * The monero_utils import is a promise but has synchronous methods
+ * that we want to use without forcing whole call chains into async/awaits.
+ */
+var MoneroUtilLoader = /** @class */ (function () {
+    function MoneroUtilLoader() {
+    }
+    Object.defineProperty(MoneroUtilLoader, "util", {
+        get: function () {
+            if (!this._util) {
+                throw new Error("MoneroUtilLoader has not been loaded.");
+            }
+            return this._util;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    MoneroUtilLoader.load = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        if (!!this._util) return [3 /*break*/, 2];
+                        _a = this;
+                        return [4 /*yield*/, mymonero_core_js_1.monero_utils_promise];
+                    case 1:
+                        _a._util = _b.sent();
+                        _b.label = 2;
+                    case 2: return [2 /*return*/];
+                }
+            });
+        });
+    };
+    return MoneroUtilLoader;
+}());
+/**
+ * A promise-based class for interacting with the MyMonero API.
+ *
+ * @remarks
+ * Uses helper methods from the mymonero web app which does all
+ * the client-side heavy lifting required for constructing
+ * transactions from possible-unspent outputs and key image processing
+ * for determining the account's transaction history.
+ *
+ */
 var MoneroWallet = /** @class */ (function () {
     function MoneroWallet(walletData) {
-        this._walletData = walletData;
+        this._addressKeys = walletData;
         // Define options required by the MyMonero API client.
         var apiClientOptions = {
             appUserAgent_product: 'blockstack-monero',
@@ -60,12 +109,77 @@ var MoneroWallet = /** @class */ (function () {
         // Instantiate an instance of the MyMonero API client.
         this._apiClient = new HostedMoneroAPIClient_Lite_1.default(apiClientOptions, apiClientContext);
     }
-    MoneroWallet.prototype.getWalletInfo = function () {
+    Object.defineProperty(MoneroWallet.prototype, "addressKeys", {
+        get: function () {
+            return this._addressKeys;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    /** Gets the network type value expected by monero_utils. */
+    MoneroWallet.getNetworkID = function (testnet) {
+        if (testnet) {
+            return mymonero_core_js_1.nettype_utils.network_type.TESTNET;
+        }
+        else {
+            return mymonero_core_js_1.nettype_utils.network_type.MAINNET;
+        }
+    };
+    /** Generates a new set of account keys. */
+    MoneroWallet.createNewAddress = function (localeLanguageCode, testnet) {
+        if (localeLanguageCode === void 0) { localeLanguageCode = "en-US"; }
+        if (testnet === void 0) { testnet = false; }
+        var networkType = this.getNetworkID(testnet);
+        var keys = MoneroUtilLoader.util.newly_created_wallet(localeLanguageCode, networkType);
+        var result = {
+            mnemonic: keys.mnemonic_string,
+            mnemonicLanguage: keys.mnemonic_language,
+            publicAddress: keys.address_string,
+            privateKeys: {
+                spend: keys.sec_spendKey_string,
+                view: keys.sec_viewKey_string,
+            },
+            publicKeys: {
+                spend: keys.pub_spendKey_string,
+                view: keys.pub_viewKey_string
+            }
+        };
+        return result;
+    };
+    MoneroWallet.createAddressKeysFromMnemonic = function (mnemonic, wordSetLanguage, testnet) {
+        if (wordSetLanguage === void 0) { wordSetLanguage = "English"; }
+        if (testnet === void 0) { testnet = false; }
+        var networkType = this.getNetworkID(testnet);
+        // Create keys from mnemonic
+        var keys = MoneroUtilLoader.util.seed_and_keys_from_mnemonic(mnemonic, networkType);
+        var result = {
+            mnemonic: mnemonic,
+            mnemonicLanguage: keys.mnemonic_language,
+            publicAddress: keys.address_string,
+            privateKeys: {
+                spend: keys.sec_spendKey_string,
+                view: keys.sec_viewKey_string,
+            },
+            publicKeys: {
+                spend: keys.pub_spendKey_string,
+                view: keys.pub_viewKey_string
+            }
+        };
+        return result;
+    };
+    MoneroWallet.createAddressKeysFromPrivateKey = function (privateKey, wordSetLanguage, testnet) {
+        if (wordSetLanguage === void 0) { wordSetLanguage = "English"; }
+        if (testnet === void 0) { testnet = false; }
+        // Create mnemonic from the given private key.
+        var mnemonic = MoneroUtilLoader.util.mnemonic_from_seed(privateKey, wordSetLanguage);
+        return this.createAddressKeysFromMnemonic(mnemonic, wordSetLanguage, testnet);
+    };
+    MoneroWallet.prototype.getBalanceInfo = function () {
         var _this = this;
         // Wrap the client callback oriented function in a Promise.
         return new Promise(function (resolve, reject) {
             try {
-                _this._apiClient.AddressInfo_returningRequestHandle(_this._walletData.publicAddress, _this._walletData.privateKeys.view, _this._walletData.publicKeys.spend, _this._walletData.privateKeys.spend, function (err) {
+                _this._apiClient.AddressInfo_returningRequestHandle(_this._addressKeys.publicAddress, _this._addressKeys.privateKeys.view, _this._addressKeys.publicKeys.spend, _this._addressKeys.privateKeys.spend, function (err) {
                     var result = [];
                     for (var _i = 1; _i < arguments.length; _i++) {
                         result[_i - 1] = arguments[_i];
@@ -76,7 +190,7 @@ var MoneroWallet = /** @class */ (function () {
                     // The MyMonero API client returns all this data in the form of callback args, oh my.
                     // Whip this argument list into a manageable object.
                     var info = {
-                        // These amount values are in piconero, convert to human readable amount.
+                        // These amount values are in integer (small units / piconero), convert to human readable string.
                         totalReceived: mymonero_core_js_1.monero_amount_format_utils.formatMoney(result[0]),
                         lockedBalance: mymonero_core_js_1.monero_amount_format_utils.formatMoney(result[1]),
                         totalSent: mymonero_core_js_1.monero_amount_format_utils.formatMoney(result[2]),
@@ -102,12 +216,17 @@ var MoneroWallet = /** @class */ (function () {
         // Wrap the client callback oriented function in a Promise.
         return new Promise(function (resolve, reject) {
             try {
-                _this._apiClient.AddressTransactions_returningRequestHandle(_this._walletData.publicAddress, _this._walletData.privateKeys.view, _this._walletData.publicKeys.spend, _this._walletData.privateKeys.spend, function (err, accountScannedHeight, accountScannedBlockHeight, accountScanStartHeight, transactionHeight, blockchainHeight, transactions) {
+                _this._apiClient.AddressTransactions_returningRequestHandle(_this._addressKeys.publicAddress, _this._addressKeys.privateKeys.view, _this._addressKeys.publicKeys.spend, _this._addressKeys.privateKeys.spend, function (err) {
+                    var result = [];
+                    for (var _i = 1; _i < arguments.length; _i++) {
+                        result[_i - 1] = arguments[_i];
+                    }
                     if (err) {
                         reject(err);
                     }
-                    var ff = transactions[0].timestamp instanceof Date;
-                    var txs = transactions.map(function (tx) { return ({
+                    // Convert some properties on the transaction objects to be more useful for us.
+                    var resultTxs = result[5];
+                    var txs = resultTxs.map(function (tx) { return ({
                         amount: new bignumber_js_1.BigNumber(tx.amount.toString()),
                         totalReceived: new bignumber_js_1.BigNumber(tx.total_received.toString()),
                         totalSent: new bignumber_js_1.BigNumber(tx.total_sent.toString()),
@@ -117,19 +236,19 @@ var MoneroWallet = /** @class */ (function () {
                         id: tx.id,
                         mempool: tx.mempool,
                         mixin: tx.mixin,
-                        timestamp: moment_1.default(tx.timestamp).toDate(),
+                        timestamp: tx.timestamp,
                         unlockTime: tx.unlock_time
                     }); });
-                    // Turn these unruly function args into an object. 
-                    var result = {
-                        accountScannedTxHeight: accountScannedHeight,
-                        accountScannedBlockHeight: accountScannedBlockHeight,
-                        accountScanStartHeight: accountScanStartHeight,
-                        transactionHeight: transactionHeight,
-                        blockchainHeight: blockchainHeight,
+                    // Turn these unruly callback function args into an object. 
+                    var txResult = {
+                        accountScannedTxHeight: result[0],
+                        accountScannedBlockHeight: result[1],
+                        accountScanStartHeight: result[2],
+                        transactionHeight: result[3],
+                        blockchainHeight: result[4],
                         transactions: txs
                     };
-                    resolve(result);
+                    resolve(txResult);
                 });
             }
             catch (err) {
@@ -138,31 +257,36 @@ var MoneroWallet = /** @class */ (function () {
             }
         });
     };
-    MoneroWallet.prototype.sendFunds = function (toAddress, amount) {
+    MoneroWallet.prototype.sendFunds = function (toAddress, amount, testnet) {
         var _this = this;
+        if (testnet === void 0) { testnet = false; }
         // Wrap the client callback oriented function in a Promise.
         return new Promise(function (resolve, reject) {
             try {
                 // Convert the BigNumber to a string.
                 var amountString = amount.toString();
+                var networkType = MoneroWallet.getNetworkID(testnet);
                 // Some hardcoded options (that not specifiable in GUI yet..)
                 var txPriority = 1;
                 var paymentId = null;
                 var isSweep = false;
-                var networkType = mymonero_core_js_1.nettype_utils.network_type.MAINNET;
-                mymonero_core_js_1.monero_sendingFunds_utils.SendFunds(toAddress, networkType, amountString, isSweep, _this._walletData.publicAddress, _this._walletData.privateKeys, _this._walletData.publicKeys, _this._apiClient, paymentId, txPriority, function (code) {
+                mymonero_core_js_1.monero_sendingFunds_utils.SendFunds(toAddress, networkType, amountString, isSweep, _this._addressKeys.publicAddress, _this._addressKeys.privateKeys, _this._addressKeys.publicKeys, _this._apiClient, paymentId, txPriority, function (code) {
                     // Intermediate status callback..
                     console.log("Send funds step " + code + ": " + mymonero_core_js_1.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code]);
-                }, function (toAddr, sentAmount, finalPaymentId, txHash, txFee, txKey, mixin) {
+                }, function () {
+                    var result = [];
+                    for (var _i = 0; _i < arguments.length; _i++) {
+                        result[_i] = arguments[_i];
+                    }
                     // Transaction successful callback..
                     resolve({
-                        toAddress: toAddr,
-                        sentAmount: sentAmount,
-                        paymentId: finalPaymentId,
-                        txHash: txHash,
-                        txFee: txFee,
-                        txKey: txKey,
-                        mixin: mixin
+                        toAddress: result[0],
+                        sentAmount: result[1],
+                        paymentId: result[2],
+                        txHash: result[3],
+                        txFee: result[4],
+                        txKey: result[5],
+                        mixin: result[6]
                     });
                 }, function (err) {
                     // Transaction problem callback..
@@ -177,37 +301,29 @@ var MoneroWallet = /** @class */ (function () {
     };
     return MoneroWallet;
 }());
-var toAddress = "42pVXU53GnA24zoiBpvcwsGEcnXvjdAG2aScfMW7Kkck9ftGfpb9pwRXUQAas2e8jKHYKvXaZNosGYAqwJYwhbCu7KjkYxo";
-var wallet = {
-    publicAddress: "43zxvpcj5Xv9SEkNXbMCG7LPQStHMpFCQCmkmR4u5nzjWwq5Xkv5VmGgYEsHXg4ja2FGRD5wMWbBVMijDTqmmVqm93wHGkg",
-    privateKeys: {
-        view: "7bea1907940afdd480eff7c4bcadb478a0fbb626df9e3ed74ae801e18f53e104",
-        spend: "4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803"
-    },
-    publicKeys: {
-        view: "080a6e9b17de47ec62c8a1efe0640b554a2cde7204b9b07bdf9bd225eeeb1c47",
-        spend: "3eb884d3440d71326e27cc07a861b873e72abd339feb654660c36a008a0028b3"
-    }
-};
-// TODO: find how to get a user friendly list of tx history.
-// use hostedMoneroAPIClient.AddressTransactions_returningRequestHandle
-// TODO: find the utility to convert raw private key bytes from blockstack to a monero seed.
-var moneroWallet = new MoneroWallet(wallet);
 function tests() {
     return __awaiter(this, void 0, void 0, function () {
-        var txs, walletInfo;
+        var keys, moneroWallet, txs, walletInfo, toAddress, sendResult;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, moneroWallet.getTransactions()];
+                case 0: return [4 /*yield*/, MoneroUtilLoader.load()];
                 case 1:
-                    txs = _a.sent();
-                    return [4 /*yield*/, moneroWallet.getWalletInfo()];
+                    _a.sent();
+                    keys = MoneroWallet.createAddressKeysFromMnemonic("input betting five balding update licks hive february dogs peaches ongoing digit five");
+                    moneroWallet = new MoneroWallet(keys);
+                    return [4 /*yield*/, moneroWallet.getTransactions()];
                 case 2:
+                    txs = _a.sent();
+                    console.log(txs);
+                    return [4 /*yield*/, moneroWallet.getBalanceInfo()];
+                case 3:
                     walletInfo = _a.sent();
                     console.log(walletInfo);
-                    return [4 /*yield*/, moneroWallet.sendFunds(toAddress, new bignumber_js_1.BigNumber("0.0001"))];
-                case 3:
-                    _a.sent();
+                    toAddress = "43Pzz5GFHzG4VSvoR1zievZmQ3ABZppFagWsQkdpLwV2JMmu2LLU5GgHmSbVqc7dBMAYi49BHXD3cTLWX3D4LX8k4q1AXQf";
+                    return [4 /*yield*/, moneroWallet.sendFunds(toAddress, new bignumber_js_1.BigNumber("0.00001"))];
+                case 4:
+                    sendResult = _a.sent();
+                    console.log(sendResult);
                     return [2 /*return*/];
             }
         });

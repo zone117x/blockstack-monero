@@ -1,14 +1,18 @@
 import HostedMoneroAPIClient from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/HostedMoneroAPIClient.Lite';
 import BackgroundResponseParser from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/BackgroundResponseParser.web';
-import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils } from '../libs/mymonero-app-js/local_modules/mymonero_core_js';
+import { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise } from '../libs/mymonero-app-js/local_modules/mymonero_core_js';
 import request from 'request';
 import { BigNumber } from 'bignumber.js';
 import moment from 'moment';
 
-interface IWalletData {
-	publicAddress: string;
-	privateKeys: { view: string, spend: string };
-	publicKeys: { view: string, spend: string }
+const DEBUG = true;
+
+interface IAddressKeys {
+	readonly mnemonic: string,
+	readonly mnemonicLanguage: string;
+	readonly publicAddress: string;
+	readonly privateKeys: { readonly view: string, readonly spend: string };
+	readonly publicKeys: { readonly view: string, readonly spend: string }
 }
 
 interface ISendFundsResult {
@@ -21,7 +25,7 @@ interface ISendFundsResult {
 	mixin;
 }
 
-interface ICommonResultValues {
+interface IAccountStateInfo {
 	accountScannedTxHeight: number,
 	accountScannedBlockHeight: number,
 	accountScanStartHeight: number,
@@ -29,7 +33,7 @@ interface ICommonResultValues {
 	blockchainHeight: number,
 }
 
-interface IWalletInfoResult extends ICommonResultValues {
+interface IBalanceInfoResult extends IAccountStateInfo {
 	totalReceived: BigNumber,
 	lockedBalance: BigNumber,
 	totalSent: BigNumber,
@@ -37,7 +41,7 @@ interface IWalletInfoResult extends ICommonResultValues {
 	ratesBySymbol: {symbol: string, rate: number}[]
 }
 
-interface ITransactionsResult extends ICommonResultValues {
+interface ITransactionsResult extends IAccountStateInfo {
 	transactions: ITransactionInfo[]
 }
 
@@ -56,14 +60,54 @@ interface ITransactionInfo {
 	paymentId: string | null
 }
 
+/**
+ * Caches the asynchronous loaded monero_utils object.
+ * 
+ * @remarks
+ * The monero_utils import is a promise but has synchronous methods
+ * that we want to use without forcing whole call chains into async/awaits.
+ */
+class MoneroUtilLoader {
+
+	static _util;
+
+	static get util() {
+		if (!this._util) {
+			throw new Error("MoneroUtilLoader has not been loaded.");
+		}
+		return this._util;
+	}
+
+	static async load() {
+		if (!this._util) {
+			this._util = await monero_utils_promise;
+		}
+	}
+}
+
+
+/** 
+ * A promise-based class for interacting with the MyMonero API.
+ * 
+ * @remarks
+ * Uses helper methods from the mymonero web app which does all 
+ * the client-side heavy lifting required for constructing
+ * transactions from possible-unspent outputs and key image processing
+ * for determining the account's transaction history.
+ * 
+ */
 class MoneroWallet {
 
 	readonly _apiClient;
-	readonly _walletData: IWalletData;
+	readonly _addressKeys: IAddressKeys;
 
-	constructor(walletData: IWalletData) {
+	get addressKeys() {
+		return this._addressKeys;
+	}
 
-		this._walletData = walletData;
+	constructor(walletData: IAddressKeys) {
+
+		this._addressKeys = walletData;
 
 		// Define options required by the MyMonero API client.
         let apiClientOptions = {
@@ -81,16 +125,78 @@ class MoneroWallet {
         this._apiClient = new HostedMoneroAPIClient(apiClientOptions, apiClientContext);
 	}
 
-	getWalletInfo() : Promise<any> {
+	/** Gets the network type value expected by monero_utils. */
+	static getNetworkID(testnet: boolean) {
+		if (testnet) {
+			return nettype_utils.network_type.TESTNET;
+		}
+		else {
+			return nettype_utils.network_type.MAINNET;
+		}
+	}
+
+	/** Generates a new set of account keys. */
+	static createNewAddress(localeLanguageCode = "en-US", testnet = false) : IAddressKeys {
+		const networkType = this.getNetworkID(testnet);
+		let keys = MoneroUtilLoader.util.newly_created_wallet(localeLanguageCode, networkType);
+		let result : IAddressKeys = {
+			mnemonic: keys.mnemonic_string,
+			mnemonicLanguage: keys.mnemonic_language,
+			publicAddress: keys.address_string,
+			privateKeys: { 
+				spend: keys.sec_spendKey_string,
+				view: keys.sec_viewKey_string,
+			},
+			publicKeys: {
+				spend: keys.pub_spendKey_string,
+				view: keys.pub_viewKey_string
+			}
+		};
+		return result;
+	}
+
+	static createAddressKeysFromMnemonic(mnemonic: string, wordSetLanguage = "English", testnet = false) : IAddressKeys {
+
+		const networkType = this.getNetworkID(testnet);
+
+		// Create keys from mnemonic
+		const keys = MoneroUtilLoader.util.seed_and_keys_from_mnemonic(mnemonic, networkType);
+
+		let result : IAddressKeys = {
+			mnemonic: mnemonic,
+			mnemonicLanguage: keys.mnemonic_language,
+			publicAddress: keys.address_string,
+			privateKeys: { 
+				spend: keys.sec_spendKey_string,
+				view: keys.sec_viewKey_string,
+			},
+			publicKeys: {
+				spend: keys.pub_spendKey_string,
+				view: keys.pub_viewKey_string
+			}
+		};
+
+		return result;
+	}
+
+	static createAddressKeysFromPrivateKey(privateKey: string, wordSetLanguage = "English", testnet = false) : IAddressKeys {
+
+		// Create mnemonic from the given private key.
+		const mnemonic : string = MoneroUtilLoader.util.mnemonic_from_seed(privateKey, wordSetLanguage);
+
+		return this.createAddressKeysFromMnemonic(mnemonic, wordSetLanguage, testnet);
+	}
+
+	getBalanceInfo() : Promise<IBalanceInfoResult> {
 
 		// Wrap the client callback oriented function in a Promise.
 		return new Promise((resolve, reject) => {
 			try {
 				this._apiClient.AddressInfo_returningRequestHandle(
-					this._walletData.publicAddress,
-					this._walletData.privateKeys.view,
-					this._walletData.publicKeys.spend,
-					this._walletData.privateKeys.spend,
+					this._addressKeys.publicAddress,
+					this._addressKeys.privateKeys.view,
+					this._addressKeys.publicKeys.spend,
+					this._addressKeys.privateKeys.spend,
 					(err, ...result: any[]) => {
 
 						if (err) {
@@ -99,9 +205,9 @@ class MoneroWallet {
 
 						// The MyMonero API client returns all this data in the form of callback args, oh my.
 						// Whip this argument list into a manageable object.
-						let info : IWalletInfoResult = {
+						let info : IBalanceInfoResult = {
 
-							// These amount values are in piconero, convert to human readable amount.
+							// These amount values are in integer (small units / piconero), convert to human readable string.
 							totalReceived: monero_amount_format_utils.formatMoney(result[0]),
 							lockedBalance: monero_amount_format_utils.formatMoney(result[1]),
 							totalSent: monero_amount_format_utils.formatMoney(result[2]),
@@ -134,24 +240,19 @@ class MoneroWallet {
 		return new Promise((resolve, reject) => {
 			try {
 				this._apiClient.AddressTransactions_returningRequestHandle(
-					this._walletData.publicAddress,
-					this._walletData.privateKeys.view,
-					this._walletData.publicKeys.spend,
-					this._walletData.privateKeys.spend,
-					(err,
-						accountScannedHeight,
-						accountScannedBlockHeight,
-						accountScanStartHeight,
-						transactionHeight,
-						blockchainHeight, 
-						transactions: any[]) => {
+					this._addressKeys.publicAddress,
+					this._addressKeys.privateKeys.view,
+					this._addressKeys.publicKeys.spend,
+					this._addressKeys.privateKeys.spend,
+					(err, ...result) => {
 
 						if (err) {
 							reject(err);
 						}
-
-						// Convert some properties on the transaction object to be more useful for us.
-						let txs = transactions.map(tx => <ITransactionInfo>{
+						
+						// Convert some properties on the transaction objects to be more useful for us.
+						let resultTxs : any[] = result[5];
+						let txs = resultTxs.map(tx => <ITransactionInfo>{
 							amount: new BigNumber(tx.amount.toString()),
 							totalReceived: new BigNumber(tx.total_received.toString()),
 							totalSent: new BigNumber(tx.total_sent.toString()),
@@ -166,16 +267,16 @@ class MoneroWallet {
 						});
 
 						// Turn these unruly callback function args into an object. 
-						let result : ITransactionsResult = {
-							accountScannedTxHeight: accountScannedHeight,
-							accountScannedBlockHeight: accountScannedBlockHeight,
-							accountScanStartHeight: accountScanStartHeight,
-							transactionHeight: transactionHeight,
-							blockchainHeight: blockchainHeight,
+						let txResult : ITransactionsResult = {
+							accountScannedTxHeight: result[0],
+							accountScannedBlockHeight: result[1],
+							accountScanStartHeight: result[2],
+							transactionHeight: result[3],
+							blockchainHeight: result[4],
 							transactions: txs
 						};
 
-						resolve(result);
+						resolve(txResult);
 					}
 				);
 			}
@@ -186,7 +287,7 @@ class MoneroWallet {
 		});
 	}
 
-	sendFunds(toAddress : string, amount: BigNumber) : Promise<ISendFundsResult> {
+	sendFunds(toAddress : string, amount: BigNumber, testnet = false) : Promise<ISendFundsResult> {
 
 		// Wrap the client callback oriented function in a Promise.
 		return new Promise((resolve, reject) => {
@@ -196,20 +297,21 @@ class MoneroWallet {
 				// Convert the BigNumber to a string.
 				let amountString = amount.toString();
 
+				const networkType = MoneroWallet.getNetworkID(testnet);
+
 				// Some hardcoded options (that not specifiable in GUI yet..)
-				const txPriority = 1;
+				const txPriority = 1; // normal priority
 				const paymentId = null;
 				const isSweep : boolean = false;
-				const networkType = nettype_utils.network_type.MAINNET;
 
 				monero_sendingFunds_utils.SendFunds(
 					toAddress,
 					networkType,
 					amountString,
 					isSweep, 
-					this._walletData.publicAddress,
-					this._walletData.privateKeys,
-					this._walletData.publicKeys,
+					this._addressKeys.publicAddress,
+					this._addressKeys.privateKeys,
+					this._addressKeys.publicKeys,
 					this._apiClient,
 					paymentId,
 					txPriority,
@@ -217,16 +319,16 @@ class MoneroWallet {
 						// Intermediate status callback..
 						console.log("Send funds step " + code + ": " + monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code])
 					},
-					(toAddr, sentAmount, finalPaymentId, txHash, txFee, txKey, mixin) => {
+					(...result) => {
 						// Transaction successful callback..
 						resolve({
-							toAddress: toAddr,
-							sentAmount: sentAmount,
-							paymentId: finalPaymentId,
-							txHash: txHash,
-							txFee: txFee,
-							txKey: txKey,
-							mixin: mixin
+							toAddress: result[0],
+							sentAmount: result[1],
+							paymentId: result[2],
+							txHash: result[3],
+							txFee: result[4],
+							txKey: result[5],
+							mixin: result[6]
 						});
 					},
 					err => {
@@ -243,29 +345,22 @@ class MoneroWallet {
 	}
 }
 
-let toAddress = "42pVXU53GnA24zoiBpvcwsGEcnXvjdAG2aScfMW7Kkck9ftGfpb9pwRXUQAas2e8jKHYKvXaZNosGYAqwJYwhbCu7KjkYxo";
-
-let wallet : IWalletData = {
-	publicAddress: "43zxvpcj5Xv9SEkNXbMCG7LPQStHMpFCQCmkmR4u5nzjWwq5Xkv5VmGgYEsHXg4ja2FGRD5wMWbBVMijDTqmmVqm93wHGkg",
-	privateKeys: {
-		view: "7bea1907940afdd480eff7c4bcadb478a0fbb626df9e3ed74ae801e18f53e104",
-		spend: "4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803"
-	},
-	publicKeys: {
-		view: "080a6e9b17de47ec62c8a1efe0640b554a2cde7204b9b07bdf9bd225eeeb1c47",
-		spend: "3eb884d3440d71326e27cc07a861b873e72abd339feb654660c36a008a0028b3"
-	}
-};
-
-// TODO: find the utility to convert raw private key bytes from blockstack to a monero seed.
-
-let moneroWallet = new MoneroWallet(wallet);
 
 async function tests() {
+
+	await MoneroUtilLoader.load();
+
+	let keys = MoneroWallet.createAddressKeysFromMnemonic("input betting five balding update licks hive february dogs peaches ongoing digit five");
+	let moneroWallet = new MoneroWallet(keys);
+
 	let txs = await moneroWallet.getTransactions();
-	let walletInfo = await moneroWallet.getWalletInfo();
+	console.log(txs);
+	let walletInfo = await moneroWallet.getBalanceInfo();
 	console.log(walletInfo);
-	await moneroWallet.sendFunds(toAddress, new BigNumber("0.0001"));
+
+	let toAddress = "43Pzz5GFHzG4VSvoR1zievZmQ3ABZppFagWsQkdpLwV2JMmu2LLU5GgHmSbVqc7dBMAYi49BHXD3cTLWX3D4LX8k4q1AXQf";
+	let sendResult = await moneroWallet.sendFunds(toAddress, new BigNumber("0.00001"));
+	console.log(sendResult);
 }
 
 tests().then(result => {
