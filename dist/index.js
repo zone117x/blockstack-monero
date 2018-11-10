@@ -23,7 +23,6 @@ const BackgroundResponseParser_web_1 = __importDefault(require("../libs/mymonero
 const mymonero_core = __importStar(require("../libs/mymonero-app-js/local_modules/mymonero_core_js/index"));
 const request_1 = __importDefault(require("request"));
 const bignumber_js_1 = require("bignumber.js");
-// { monero_amount_format_utils, monero_sendingFunds_utils, nettype_utils, monero_utils_promise }
 const DEBUG = true;
 /**
  * Caches the asynchronous loaded monero_utils object.

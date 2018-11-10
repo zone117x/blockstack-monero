@@ -10,7 +10,20 @@
             "isBackground": true,
             "problemMatcher": [
                 "$tsc-watch"
-            ],
+            ]
+        },
+        {            
+            "label": "tcs: build",
+            "type": "typescript",
+            "tsconfig": "tsconfig.json",
+            "problemMatcher": [
+                "$tsc"
+            ]
+        },
+        {
+            "label": "webpack",
+            "type": "npm",
+            "script": "webpack",
             "group": {
                 "kind": "build",
                 "isDefault": true

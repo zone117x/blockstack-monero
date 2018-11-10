@@ -1,9 +1,11 @@
 const path = require('path');
 const webpack = require('webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     entry: './dist/index.js',
-    mode: 'development',
+    mode: 'production',
     devtool: "source-map",
     optimization: {
         usedExports: true
@@ -11,18 +13,33 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.wasm$/,
-                loader: "file-loader",
-                type: "javascript/auto",
-            },
-            {
                 test: /async\.js$/,
                 use: 'null-loader'
+            },
+            {
+                test: /\.js$/,
+                exclude: [/node_modules/],
+                use: [
+                    {
+                        loader: 'babel-loader',
+                        options: {
+                            cacheDirectory: false
+                        }
+
+                    }
+                ]
+            },
+            {
+                test: /MyMoneroCoreBridge\.js$/,
+                loader: 'string-replace-loader',
+                options: {
+                    search: '/mymonero_core_js/monero_utils/',
+                    replace: '/',
+                }
             }
         ]
     },
     resolve: {
-        extensions: ['.wasm', '.js'],
         alias: {
             "fs": "html5-fs",
             "request$": "xhr"
@@ -32,27 +49,21 @@ module.exports = {
         path: path.resolve(__dirname, 'dist'),
         filename: 'bundle.js'
     },
-    node: {
-      //fs: 'empty',
-      //net: 'empty',
-      //tls: 'empty'
-    },
     plugins: [
+        //new BundleAnalyzerPlugin(),
         new webpack.IgnorePlugin(/electron/),
         new webpack.IgnorePlugin(/^\.\/locale$/, /cryptonote_utils$/),
-        new webpack.IgnorePlugin(/MyMoneroCoreCpp_ASMJS/)
+        new webpack.IgnorePlugin(/MyMoneroCoreCpp_ASMJS/),
+        new webpack.NormalModuleReplacementPlugin(/^\.\/MyMoneroCoreCpp_WASM$/, './MyMoneroCoreCpp_WASM.js'),
+        new CopyWebpackPlugin([
+            {
+                from: '**/monero_utils/MyMoneroCoreCpp_WASM.wasm',
+                to: path.resolve(__dirname, 'dist') + '/' + '[name].[ext]',
+                toType: 'template'
+            }
+        ])
     ],
     externals: [
-        /*(function () {
-            var IGNORES = [
-                'electron'
-            ];
-            return function (context, request, callback) {
-                if (IGNORES.indexOf(request) >= 0) {
-                    return callback(null, "require('" + request + "')");
-                }
-                return callback();
-            };
-        })()*/
+
     ]
 };
