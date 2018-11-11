@@ -3,13 +3,14 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
+const outputDir = "app";
+
 module.exports = {
-    entry: './dist/index.js',
+    entry: './dist/gui.js',
     mode: 'production',
-    devtool: "source-map",
-    optimization: {
-        usedExports: true
-    },
+    //optimization: {
+    //    usedExports: true
+    //},
     module: {
         rules: [
             {
@@ -25,7 +26,6 @@ module.exports = {
                         options: {
                             cacheDirectory: false
                         }
-
                     }
                 ]
             },
@@ -46,8 +46,8 @@ module.exports = {
         }
     },
     output: {
-        path: path.resolve(__dirname, 'dist'),
-        filename: 'bundle.js'
+        path: path.resolve(__dirname, outputDir),
+        filename: 'app.bundle.js'
     },
     plugins: [
         //new BundleAnalyzerPlugin(),
@@ -58,12 +58,9 @@ module.exports = {
         new CopyWebpackPlugin([
             {
                 from: '**/monero_utils/MyMoneroCoreCpp_WASM.wasm',
-                to: path.resolve(__dirname, 'dist') + '/' + '[name].[ext]',
+                to: path.resolve(__dirname, outputDir) + '/' + '[name].[ext]',
                 toType: 'template'
             }
         ])
-    ],
-    externals: [
-
     ]
 };

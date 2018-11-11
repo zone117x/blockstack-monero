@@ -12,7 +12,7 @@
                 "$tsc-watch"
             ]
         },
-        {            
+        {
             "label": "tcs: build",
             "type": "typescript",
             "tsconfig": "tsconfig.json",
@@ -28,6 +28,13 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "webserver",
+            "type": "npm",
+            "script": "start",
+            "isBackground": true,
+            "problemMatcher": []
         }
     ]
 }

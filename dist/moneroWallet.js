@@ -23,7 +23,6 @@ const BackgroundResponseParser_web_1 = __importDefault(require("../libs/mymonero
 const mymonero_core = __importStar(require("../libs/mymonero-app-js/local_modules/mymonero_core_js/index"));
 const request_1 = __importDefault(require("request"));
 const bignumber_js_1 = require("bignumber.js");
-const DEBUG = true;
 /**
  * Caches the asynchronous loaded monero_utils object.
  *
@@ -46,6 +45,7 @@ class MoneroUtilLoader {
         });
     }
 }
+exports.MoneroUtilLoader = MoneroUtilLoader;
 /**
  * A promise-based class for interacting with the MyMonero API.
  *
@@ -138,7 +138,7 @@ class MoneroWallet {
                     // The MyMonero API client returns all this data in the form of callback args, oh my.
                     // Whip this argument list into a manageable object.
                     let info = {
-                        // These amount values are in integer (small units / piconero), convert to human readable string.
+                        // These amount values are an integer (piconero / smallest units), convert to human readable string.
                         totalReceived: mymonero_core.monero_amount_format_utils.formatMoney(result[0]),
                         lockedBalance: mymonero_core.monero_amount_format_utils.formatMoney(result[1]),
                         totalSent: mymonero_core.monero_amount_format_utils.formatMoney(result[2]),
@@ -238,39 +238,5 @@ class MoneroWallet {
         });
     }
 }
-function tests() {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield MoneroUtilLoader.load();
-        let keys = MoneroWallet.createAddressKeysFromMnemonic("input betting five balding update licks hive february dogs peaches ongoing digit five");
-        let moneroWallet = new MoneroWallet(keys);
-        let txs = yield moneroWallet.getTransactions();
-        console.log(txs);
-        let walletInfo = yield moneroWallet.getBalanceInfo();
-        console.log(walletInfo);
-        let toAddress = "43Pzz5GFHzG4VSvoR1zievZmQ3ABZppFagWsQkdpLwV2JMmu2LLU5GgHmSbVqc7dBMAYi49BHXD3cTLWX3D4LX8k4q1AXQf";
-        let sendResult = yield moneroWallet.sendFunds(toAddress, new bignumber_js_1.BigNumber("0.00001"));
-        console.log(sendResult);
-    });
-}
-tests().then(result => {
-    console.log(result);
-})
-    .catch(err => {
-    console.log(err);
-});
-/*
- GUI TODO
-
- * Show list of transactions (link to a block explorer).
- * Show address/key details modal.
- * Send transaction modal.
- * Manual refresh button.
- * Refresh every 30s.
- *
- *
-
- Experiment:
- * Porting monero js code for the features (unspent output processing, tx key image process) to C# and in Blazor.
-
- */
-//# sourceMappingURL=index.js.map
+exports.MoneroWallet = MoneroWallet;
+//# sourceMappingURL=moneroWallet.js.map
