@@ -1,16 +1,88 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title></title>
+    <title>Monero client-side web wallet using Blockstack</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
 </head>
 
-<link rel="stylesheet" href="bootstrap.min.css">
+<body class="bg-light">
+
+    <div class="container">
+
+        <nav class="nav nav-masthead justify-content-end">
+            <span class="nav-link active">Matthew Little</span>
+            <a class="nav-link" href="#">Sign out</a>
+        </nav>
+
+        <div class="py-5 text-center">
+            <h2>Monero web wallet</h2>
+            <p class="lead">
+                Use your Blockstack account to easily send and receive Monero.
+                <br>
+                Your private keys are only ever used client side.
+                <br>
+                This wallet app uses the <a target="blank" href="https://github.com/mymonero/hosted-monero-api-spec/commit/0b9ff3eab5fdc52bb0499faeb86fc0f02fde30b3">MyMonero API</a>.
+            </p>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Your public address</h5>
+                        <p class="card-text">
+                            <code>42pVXU53GnA24zoiBpvcwsGEcnXvjdAG2aScfMW7Kkck9ftGfpb9pwRXUQAas2e8jKHYKvXaZNosGYAqwJYwhbCu7KjkYxo</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Your Balance</h5>
+                        <p class="card-text">0.049538559225 XMR</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <button type="button" class="btn btn-info btn-lg btn-block">Send Monero</button>
+
+        <br />
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">Value (XMR)</th>
+                    <th scope="col">Date Received</th>
+                    <th scope="col">Mixin</th>
+                    <th scope="col">Transaction ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>-0.000074256031</th>
+                    <td>10 November 2018 13:32:11</td>
+                    <td>10</td>
+                    <td>a6043dee868faf88c138505ffda9bc56756dc663370422322c541ec2b69dd18c</td>
+                </tr>
+                <tr>
+                    <th>-0.000045603166</th>
+                    <td>10 November 2018 10:33:27</td>
+                    <td>10</td>
+                    <td>10cdd8a0c981cd0d45fc7fd79602e5df384e1ee3d6d4e957c263e015124d8806</td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+</body>
+
 <script src="jquery-3.3.1.min.js"></script>
 <script src="bootstrap.bundle.min.js"></script>
 <script src="app.bundle.js"></script>
-
-<body>
-<span>test content update</span>
-</body>
 
 </html>

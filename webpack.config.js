@@ -6,15 +6,18 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 const outputDir = "app";
 
 module.exports = {
-    entry: './dist/gui.js',
+    entry: './dist/main.js',
     mode: 'production',
-    //optimization: {
-    //    usedExports: true
-    //},
+    optimization: {
+        usedExports: true
+    },
     module: {
         rules: [
             {
-                test: /async\.js$/,
+                test: [
+                    /async\.js$/, 
+                    path.resolve(__dirname, 'node_modules/window/src/index.js')
+                ],
                 use: 'null-loader'
             },
             {
@@ -49,9 +52,15 @@ module.exports = {
         path: path.resolve(__dirname, outputDir),
         filename: 'app.bundle.js'
     },
+    node: {
+        //http: false,
+        child_process: false
+    },
     plugins: [
         //new BundleAnalyzerPlugin(),
+        new webpack.IgnorePlugin(/child_process/),
         new webpack.IgnorePlugin(/electron/),
+        new webpack.IgnorePlugin(/node-localstorage/),
         new webpack.IgnorePlugin(/^\.\/locale$/, /cryptonote_utils$/),
         new webpack.IgnorePlugin(/MyMoneroCoreCpp_ASMJS/),
         new webpack.NormalModuleReplacementPlugin(/^\.\/MyMoneroCoreCpp_WASM$/, './MyMoneroCoreCpp_WASM.js'),

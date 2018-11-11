@@ -123,9 +123,33 @@ class MoneroWallet {
         return result;
     }
     static createAddressKeysFromPrivateKey(privateKey, wordSetLanguage = "English", testnet = false) {
-        // Create mnemonic from the given private key.
+        // First create a mnemonic from the given private key.
         const mnemonic = MoneroUtilLoader.util.mnemonic_from_seed(privateKey, wordSetLanguage);
+        // Now create the keys from the mnemonic.
         return this.createAddressKeysFromMnemonic(mnemonic, wordSetLanguage, testnet);
+    }
+    /**
+     * Registers a newly created account. Must be called after locally generating account keys
+     * so that the MyMonero service tracks the account transactions.
+     */
+    registerNewAccount() {
+        // Wrap the client callback oriented function in a Promise.
+        return new Promise((resolve, reject) => {
+            try {
+                let isNewlyGeneratedAccount = true;
+                this._apiClient.LogIn(this._addressKeys.publicAddress, this._addressKeys.privateKeys.view, isNewlyGeneratedAccount, (err, newAddress, receivedGeneratedLocally, startHeight) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    resolve({ alreadyRegistered: !newAddress });
+                });
+            }
+            catch (err) {
+                // Internal error.
+                reject(err);
+            }
+        });
     }
     getBalanceInfo() {
         // Wrap the client callback oriented function in a Promise.
@@ -134,6 +158,7 @@ class MoneroWallet {
                 this._apiClient.AddressInfo_returningRequestHandle(this._addressKeys.publicAddress, this._addressKeys.privateKeys.view, this._addressKeys.publicKeys.spend, this._addressKeys.privateKeys.spend, (err, ...result) => {
                     if (err) {
                         reject(err);
+                        return;
                     }
                     // The MyMonero API client returns all this data in the form of callback args, oh my.
                     // Whip this argument list into a manageable object.
@@ -167,6 +192,7 @@ class MoneroWallet {
                 this._apiClient.AddressTransactions_returningRequestHandle(this._addressKeys.publicAddress, this._addressKeys.privateKeys.view, this._addressKeys.publicKeys.spend, this._addressKeys.privateKeys.spend, (err, ...result) => {
                     if (err) {
                         reject(err);
+                        return;
                     }
                     // Convert some properties on the transaction objects to be more useful for us.
                     let resultTxs = result[5];
@@ -212,6 +238,7 @@ class MoneroWallet {
                 const txPriority = 1; // normal priority
                 const paymentId = null;
                 const isSweep = false;
+                // Initiate the transaction.
                 mymonero_core.monero_sendingFunds_utils.SendFunds(toAddress, networkType, amountString, isSweep, this._addressKeys.publicAddress, this._addressKeys.privateKeys, this._addressKeys.publicKeys, this._apiClient, paymentId, txPriority, code => {
                     // Intermediate status callback..
                     console.log("Send funds step " + code + ": " + mymonero_core.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code]);
