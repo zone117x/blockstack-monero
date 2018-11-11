@@ -11,8 +11,8 @@
     <div class="container">
 
         <nav class="nav nav-masthead justify-content-end">
-            <span class="nav-link active">Matthew Little</span>
-            <a class="nav-link" href="#">Sign out</a>
+            <span class="nav-link active" id="blockstack-account-name"></span>
+            <button type="button" class="btn btn-link" id="blockstack-account-sign-out">Sign out</button>
         </nav>
 
         <div class="py-5 text-center">
@@ -22,18 +22,22 @@
                 <br>
                 Your private keys are only ever used client side.
                 <br>
-                This wallet app uses the <a target="blank" href="https://github.com/mymonero/hosted-monero-api-spec/commit/0b9ff3eab5fdc52bb0499faeb86fc0f02fde30b3">MyMonero API</a>.
+                This wallet app uses the <a target="blank" href="https://github.com/mymonero/hosted-monero-api-spec/blob/e4632679d46d3b6e2b5446c65f55bdacefdadac6/mymonero_api.md">MyMonero API</a>.
             </p>
         </div>
 
         <div class="row">
-            <div class="col">
+            <div class="col-9">
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title">Your public address</h5>
                         <p class="card-text">
-                            <code>42pVXU53GnA24zoiBpvcwsGEcnXvjdAG2aScfMW7Kkck9ftGfpb9pwRXUQAas2e8jKHYKvXaZNosGYAqwJYwhbCu7KjkYxo</code>
+                            <code id="account-public-address" class="text-dark">&nbsp;</code>
                         </p>
+                        <div class="row">
+                            <button type="button" class="col btn btn-secondary btn-sm mx-3">Account Details</button>
+                            <button type="button" class="col btn btn-secondary btn-sm mx-3" data-clipboard-target="#account-public-address">Copy</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -41,7 +45,11 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title">Your Balance</h5>
-                        <p class="card-text">0.049538559225 XMR</p>
+                        <p class="card-text text-monospace">
+                            <span class="d-block"><span id="balance-xmr"></span> XMR</span>
+                            <span class="d-block text-muted"><span id="balance-usd"></span> USD <i>(Notional)</i></span>
+                            <span class="d-block text-muted"><span id="balance-eur"></span> EUR <i>(Notional)</i></span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -64,16 +72,16 @@
             </thead>
             <tbody>
                 <tr>
-                    <th>-0.000074256031</th>
+                    <th class="text-monospace">-0.000074256031</th>
                     <td>10 November 2018 13:32:11</td>
-                    <td>10</td>
-                    <td>a6043dee868faf88c138505ffda9bc56756dc663370422322c541ec2b69dd18c</td>
+                    <td class="text-monospace">10</td>
+                    <td class="text-monospace">a6043dee868faf88c138505ffda9bc56756dc663370422322c541ec2b69dd18c</td>
                 </tr>
                 <tr>
-                    <th>-0.000045603166</th>
+                    <th class="text-monospace">-0.000045603166</th>
                     <td>10 November 2018 10:33:27</td>
-                    <td>10</td>
-                    <td>10cdd8a0c981cd0d45fc7fd79602e5df384e1ee3d6d4e957c263e015124d8806</td>
+                    <td class="text-monospace">10</td>
+                    <td class="text-monospace">10cdd8a0c981cd0d45fc7fd79602e5df384e1ee3d6d4e957c263e015124d8806</td>
                 </tr>
             </tbody>
         </table>
@@ -83,6 +91,8 @@
 
 <script src="jquery-3.3.1.min.js"></script>
 <script src="bootstrap.bundle.min.js"></script>
+<script src="clipboard.min.js"></script>
+<script>new ClipboardJS('button');</script>
 <script src="app.bundle.js"></script>
 
 </html>

@@ -1,22 +1,41 @@
 import { MoneroWallet } from './moneroWallet';
 
+class View {
+    static get accountPublicAddress() : HTMLSpanElement {
+        return document.getElementById('account-public-address')!;
+    }
+    static get balanceXmr() : HTMLSpanElement {
+        return document.getElementById('balance-xmr')!;
+    }
+    static get balanceUsd() : HTMLSpanElement {
+        return document.getElementById('balance-usd')!;
+    }
+    static get balanceEur() : HTMLSpanElement {
+        return document.getElementById('balance-eur')!;
+    }
+}
+
 export class WalletViewModel {
 
     readonly _wallet: MoneroWallet;
     _isPolling: boolean = false;
     _pollerID: number | undefined;
-    
+
+
     constructor (wallet: MoneroWallet) {
         this._wallet = wallet;
-
-        // TODO: Store references to the various DOM components needed.
+        this.setAccountDisplayDetails();
     }
 
-    // Sets up the update timer (refreshes info every 30 seconds).
+    setAccountDisplayDetails() {
+        View.accountPublicAddress.innerText = this._wallet.addressKeys.publicAddress;
+    }
+
+    // Sets up the update timer (refreshes info every 15 seconds).
     startPolling() {
         if (!this._isPolling) {
             this._isPolling = true;
-            this._pollerID = window.setInterval(() => this.refreshData(), 30000);
+            this._pollerID = window.setInterval(() => this.refreshData(), 15000);
         }
     }
 
@@ -42,6 +61,10 @@ export class WalletViewModel {
         let walletInfo = await this._wallet.getBalanceInfo();
         console.log(walletInfo);
 
+        View.balanceXmr.innerText = walletInfo.balance;
+        View.balanceUsd.innerText = walletInfo.balanceUsd;
+        View.balanceEur.innerText = walletInfo.balanceEur;
+
         // TODO: Update the DOM with balance info.
     }
     
@@ -50,6 +73,10 @@ export class WalletViewModel {
         console.log(txs);
 
         // TODO: Update the transaction table with tx info.
+    }
+
+    dispose() {
+        // TODO: disconnect from any DOM subscriptions or references.
     }
     
 }

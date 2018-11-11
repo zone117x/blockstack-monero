@@ -1,25 +1,18 @@
 const path = require('path');
 const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const outputDir = "app";
 
 module.exports = {
     entry: './dist/main.js',
     mode: 'production',
+    devtool: "source-map",
     optimization: {
         usedExports: true
     },
     module: {
         rules: [
-            {
-                test: [
-                    /async\.js$/, 
-                    path.resolve(__dirname, 'node_modules/window/src/index.js')
-                ],
-                use: 'null-loader'
-            },
             {
                 test: /\.js$/,
                 exclude: [/node_modules/],
@@ -33,6 +26,17 @@ module.exports = {
                 ]
             },
             {
+                test: [
+                    // Ignore an used async.js import which bloats the bundle quite a bit.
+                    /async\.js$/,
+
+                    // Ignore the 'window' DOM polyfill for node runtime.
+                    path.resolve(__dirname, 'node_modules/window/src/index.js')
+                ],
+                use: 'null-loader'
+            },
+            {
+                // Fix a hard coded resource path monero-app-js. 
                 test: /MyMoneroCoreBridge\.js$/,
                 loader: 'string-replace-loader',
                 options: {
@@ -57,13 +61,23 @@ module.exports = {
         child_process: false
     },
     plugins: [
-        //new BundleAnalyzerPlugin(),
+
+        // Ignore some modules used only during runtime in Node.
         new webpack.IgnorePlugin(/child_process/),
         new webpack.IgnorePlugin(/electron/),
         new webpack.IgnorePlugin(/node-localstorage/),
+
+        // Ignore moment.js locales warning.
         new webpack.IgnorePlugin(/^\.\/locale$/, /cryptonote_utils$/),
+
+        // Do not bundle in the ASM.js version of MoneroCore (we are okay with only WASM).
         new webpack.IgnorePlugin(/MyMoneroCoreCpp_ASMJS/),
+
+        // Fix a wasm.js import path - newer versions of webpack or babel are resolving
+        // extensionless imports like 'libWASM' to 'libWASM.wasm' rather than 'libWASM.js'.
         new webpack.NormalModuleReplacementPlugin(/^\.\/MyMoneroCoreCpp_WASM$/, './MyMoneroCoreCpp_WASM.js'),
+
+        // Copy the MoneroCore wasm binary file to our output directory.
         new CopyWebpackPlugin([
             {
                 from: '**/monero_utils/MyMoneroCoreCpp_WASM.wasm',

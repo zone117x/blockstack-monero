@@ -2,11 +2,9 @@
   "name": "blockstack-monero",
   "version": "0.0.1",
   "description": "Client-side Monero wallet using Blockstack and the MyMonero API",
-  "main": "dist/index.js",
   "dependencies": {
     "@types/request": "^2.48.1",
     "async": "2.6.1",
-    "bignumber.js": "^8.0.1",
     "blockstack": "^18.1.0",
     "moment": "^2.22.2",
     "request": "^2.88.0",
@@ -15,11 +13,13 @@
   "devDependencies": {
     "@babel/core": "^7.1.5",
     "@babel/preset-env": "^7.1.5",
+    "@types/mocha": "^5.2.5",
     "@types/node": "^10.12.3",
     "babel-loader": "^8.0.4",
     "copy-webpack-plugin": "^4.6.0",
     "detect-browser": "^3.0.1",
     "html5-fs": "0.1.1",
+    "mocha": "^5.2.0",
     "node-localstorage": "^1.3.1",
     "null-loader": "^0.1.1",
     "string-replace-loader": "^2.1.1",
@@ -46,5 +46,11 @@
   "bugs": {
     "url": "https://github.com/zone117x/blockstack-monero/issues"
   },
-  "homepage": "https://github.com/zone117x/blockstack-monero#readme"
+  "homepage": "https://github.com/zone117x/blockstack-monero#readme",
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ]
 }

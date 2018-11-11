@@ -1,5 +1,6 @@
-import { MoneroWallet, MoneroUtilLoader } from './moneroWallet';
+import { MoneroWallet } from './moneroWallet';
 import { WalletViewModel } from './walletViewModel';
+import { BlockstackAccountViewModel } from './blockstackAccountViewModel';
 import * as blockstack from 'blockstack';
 import { detect } from 'detect-browser';
 
@@ -7,7 +8,6 @@ const NODE_ENV = (function () {
     const browser = detect();
     return browser && browser.name === 'node'
 })();
-checkNodeEnv();
 
 /*
     GUI TODO
@@ -21,6 +21,8 @@ checkNodeEnv();
 */
 
 async function main() {
+
+    await checkNodeEnv();
 
     // TODO: Show a sign in button rather than auto launching.
 
@@ -42,13 +44,13 @@ async function main() {
 
     // Load the Blockstack user data.
     let userData = blockstack.loadUserData();
+    console.log(userData);
 
-    // TODO: Pass this to a profile viewmodel for displaying info and allowing logout. 
-    let profile = userData.profile;
-    console.log(profile);
+    // Pass Blockstack user data to viewmodel for displaying info and allowing logout. 
+    let blockstackAccountViewModel = new BlockstackAccountViewModel(userData);
 
     // Initialize the monero util (loads the large-ish WASM module).
-    await MoneroUtilLoader.load();
+    await MoneroWallet.initialize();
 
     // Derive a monero key set from the Blockstack's user's private key. 
     let appPrivateKey = userData.appPrivateKey;
@@ -57,17 +59,20 @@ async function main() {
     // Create a the monero wallet object from the key set.
     let moneroWallet = new MoneroWallet(keys);
 
-    console.log(`Monero mnemonic ${keys.mnemonic}`);
-
     // Need to make sure the account is registered with the MyMonero service
     // when the keys are first generated, so that their services can track transactions
     // for this account. 
     // TODO: use blockstack storage to determine if the MyMonero account has already been registered.
     await moneroWallet.registerNewAccount();
 
-    let viewModel = new WalletViewModel(moneroWallet);
-    viewModel.refreshData();
-    viewModel.startPolling();
+    let walletViewModel = new WalletViewModel(moneroWallet);
+    walletViewModel.refreshData();
+    walletViewModel.startPolling();
+
+    // Register Blockstack account sign out action with stopping any wallet activities.
+    blockstackAccountViewModel.onSignOut(() => {
+        walletViewModel.stopPolling();
+    });
 
 }
 
@@ -80,17 +85,27 @@ main().catch(err => {
 });
 
 
-function checkNodeEnv() {
+
+// ---- Setup for running blockstack.js within the Node.js runtime.
+// TODO: Not working. Possibly cryptographic operation differences in node vs browser? 
+// Alternatively, could use Selenium or something similar for doing full integration testing.
+
+let signInServerInstance;
+let signInServerAddr;
+
+async function checkNodeEnv() {
     // If running in node then load a 'window' and 'localStorage' shim.
     // These are used by the blockstack lib.
     if (NODE_ENV) {
         let windowShim = new (require('window'))();
         let localStorageShim = new (require('node-localstorage').LocalStorage)('./scratch');
         windowShim.localStorage = localStorageShim;
-        (global as any).window = windowShim;
-        (global as any).localStorage = localStorageShim;
-        (global as any).navigator = windowShim.navigator;
-        (global as any).document = windowShim.document;
+        let globalObj = (global as any);
+        globalObj.window = windowShim;
+        globalObj.location = windowShim.location;
+        globalObj.localStorage = localStorageShim;
+        globalObj.navigator = windowShim.navigator;
+        globalObj.document = windowShim.document;
         let windowLocation = windowShim.location;
         Object.defineProperty(windowShim, 'location', {
             get: () => windowLocation,
@@ -101,12 +116,16 @@ function checkNodeEnv() {
                 }
             }
         });
+
+        await setupSignInServer();
     }
 }
 
-async function performNodeSignIn() {
-    let addr;
+async function setupSignInServer() {
+
     const http = require('http');
+    let addr : string;
+
     const server = http.createServer((req, res) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Request-Method', '*');
@@ -117,7 +136,7 @@ async function performNodeSignIn() {
             res.end();
         }
         if (req.url.endsWith("/manifest.json")){
-            res.writeHead(200/*, { 'Content-Type': 'application/json' }*/);
+            res.writeHead(200);
             res.end(JSON.stringify({
                 "name": "Hello, Blockstack",
                 "start_url": addr,
@@ -133,35 +152,21 @@ async function performNodeSignIn() {
         }
         console.log("got here");
     });
-    server.on('error', (err) =>{
+    server.on('clientError', (err) =>{
         console.log('got err' + err);
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     let serverAddr = server.address();
     addr = `${serverAddr.address}:${serverAddr.port}`;
-    let redirectUri = `http://${addr}`;
+
+    signInServerAddr = addr;
+    signInServerInstance = server;
+}
+
+async function performNodeSignIn() {
+    let redirectUri = `http://${signInServerAddr}`;
     let manifestUrl = redirectUri + "/manifest.json";
     await new Promise(resolve => setTimeout(resolve, 3000));
     blockstack.redirectToSignIn(redirectUri, manifestUrl);
-    await new Promise(resolve => setTimeout(resolve, 1000000));
+    //await new Promise(resolve => setTimeout(resolve, 1000000));
 }
-
-async function tests() {
-
-    await MoneroUtilLoader.load();
-
-    let keys = MoneroWallet.createAddressKeysFromMnemonic("input betting five balding update licks hive february dogs peaches ongoing digit five");
-    let moneroWallet = new MoneroWallet(keys);
-    //let registrationResult = await moneroWallet.registerNewAccount();
-    //console.log(registrationResult);
-
-    let txs = await moneroWallet.getTransactions();
-    console.log(txs);
-    let walletInfo = await moneroWallet.getBalanceInfo();
-    console.log(walletInfo);
-
-    //let toAddress = "43Pzz5GFHzG4VSvoR1zievZmQ3ABZppFagWsQkdpLwV2JMmu2LLU5GgHmSbVqc7dBMAYi49BHXD3cTLWX3D4LX8k4q1AXQf";
-    //let sendResult = await moneroWallet.sendFunds(toAddress, new BigNumber("0.00001"));
-    //console.log(sendResult);
-}
-
