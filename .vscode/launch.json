@@ -17,12 +17,16 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Tests",
-            "program": "${workspaceFolder}/dist/test.js",
-            "outFiles": [
-                "${workspaceFolder}/dist/*.js"
+            "name": "Mocha Tests",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "--require", "ts-node/register",
+                "-u", "tdd",
+                "--timeout", "999999",
+                "--colors", "--recursive",
+                "${workspaceFolder}/src/test.ts"
             ],
-            "preLaunchTask": "npm: compile"
+            "internalConsoleOptions": "openOnSessionStart"
         }
     ]
 }
