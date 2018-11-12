@@ -1,6 +1,6 @@
 {
     "name": "Monero Web Wallet",
-    "start_url": "zone117x.github.io/blockstack-monero/app",
+    "start_url": "zone117x.github.io",
     "description": "A client side Monero wallet powered by Blockstack and MyMonero",
     "icons": [
         {
