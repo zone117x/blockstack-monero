@@ -32,6 +32,8 @@ async function main() {
 
         if (!isUserSignedIn && !isSignInPending) {
             
+            NavigationViewModel.instance.setDisplayForSignedIn(false);
+            
             // Wait for user to click the sign in button (they have no other option and app is useless until then).
             await NavigationViewModel.instance.waitForLoginClick();
 
