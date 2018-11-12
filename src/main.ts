@@ -4,44 +4,98 @@ import { BlockstackAccountViewModel } from './blockstackAccountViewModel';
 import { NavigationViewModel } from './navigationViewModel';
 import * as blockstack from 'blockstack';
 import { detect } from 'detect-browser';
+import { exec } from 'child_process';
 
 const NODE_ENV = (function () {
     const browser = detect();
     return browser && browser.name === 'node'
 })();
 
-/*
-    GUI TODO
-
-    * Show list of transactions (link to a block explorer).
-    * Show address/key details modal.
-    * Send transaction modal.
+/* GUI TODO
+    * Link transaction hashes to a block explorer.
     * Manual refresh button.
-    * Refresh every 30s.
-
 */
+
+NavigationViewModel.initialize();
 
 async function main() {
 
     await checkNodeEnv();
 
-    // TODO: Show a sign in button rather than auto launching.
+    while (true) {
 
-    let isUserSignedIn = blockstack.isUserSignedIn();
+        let isUserSignedIn = blockstack.isUserSignedIn();
 
-    if (!isUserSignedIn && blockstack.isSignInPending()) {
-        await blockstack.handlePendingSignIn();
-    }
-    else if (!isUserSignedIn) {
-        if (NODE_ENV) {
-            await performNodeSignIn();
-        }
-        else {
+        // Check if there is a authentication request that hasn't been handled.
+        // https://blockstack.github.io/blockstack.js/index.html#issigninpending
+        let isSignInPending = blockstack.isSignInPending();
+
+        if (!isUserSignedIn && !isSignInPending) {
+            
+            // Wait for user to click the sign in button (they have no other option and app is useless until then).
+            await NavigationViewModel.instance.waitForLoginClick();
+
+            // Generates an authentication request and redirects the user to the Blockstack browser to approve the sign in request.
+            // https://blockstack.github.io/blockstack.js/index.html#redirecttosignin
             blockstack.redirectToSignIn();
-            // Exit since we are about to be redirected off the page.
-            return;
+
+            // Since we are about to be redirected off the page, just continue back to waiting for
+            // another sign in click. 
+            // TODO: Use cross-window communication to detect login so this window doesn't stay logged out and useless.
+            //       https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
+            continue;
         }
+
+        else if (!isUserSignedIn && isSignInPending) {
+
+            // https://blockstack.github.io/blockstack.js/index.html#handlependingsignin
+            // Try to process any pending sign in request by returning a Promise that resolves to the user data object if the sign in succeeds.
+            try {
+                await blockstack.handlePendingSignIn();
+
+                // Cleanup the current window's url query after a pending sign.
+                try {
+                    let curLocation = window.location.href;
+                    let newLocation = curLocation.split("?authResponse=")[0].substring(window.location.origin.length);
+                    window.history.replaceState({}, document.title, newLocation);
+                }
+                catch (err) {
+                    // Log but ignore if an error happens during this. Just a display thing and browser support may break it.
+                    console.log(err);
+                }
+            }
+            catch (err) {
+
+                // Problem signing in, show error notification.
+                NavigationViewModel.instance.showErrorNotification(err);
+                console.log(err);
+
+                // Continue back to allow the user to try again.
+                continue;
+            }
+        }
+
+        else if (!isUserSignedIn) {
+            throw new Error("Bad application state. How did we end up here? 🤔");
+        }
+
+        // Everything is 👌 load the actual app.
+        const appViewModels = await initializeSignedInApp();
+
+        // We are done here unless user signs out.
+        await NavigationViewModel.instance.waitForLogoutClick();
+
+        // User clicked sign out, sign them out.
+        blockstack.signUserOut();
+
+        // Clean up app state.
+        appViewModels.walletViewModel.dispose();
+        appViewModels.blockstackAccountViewModel.dispose();
+        NavigationViewModel.instance.setDisplayForSignedIn(false);
     }
+}
+
+async function initializeSignedInApp() {
 
     // Load the Blockstack user data.
     let userData = blockstack.loadUserData();
@@ -50,8 +104,10 @@ async function main() {
     // Pass Blockstack user data to viewmodel for displaying info and allowing logout. 
     let blockstackAccountViewModel = new BlockstackAccountViewModel(userData);
 
-    NavigationViewModel.initialize();
+    NavigationViewModel.instance.setDisplayForSignedIn(true);
 
+    // Yield to the browser display update queue before the intensive loading.
+    await new Promise(res => setTimeout(() => res(), 1));
 
     // Initialize the monero util (loads the large-ish WASM module).
     await MoneroWallet.initialize();
@@ -73,11 +129,10 @@ async function main() {
     walletViewModel.refreshData();
     walletViewModel.startPolling();
 
-    // Register Blockstack account sign out action with stopping any wallet activities.
-    blockstackAccountViewModel.onSignOut(() => {
-        walletViewModel.stopPolling();
-    });
-
+    return {
+        walletViewModel: walletViewModel,
+        blockstackAccountViewModel: blockstackAccountViewModel
+    }
 }
 
 
@@ -85,7 +140,8 @@ async function main() {
 main().catch(err => {
     console.log("Initialization failed");
     console.log(err);
-    // TODO: show this message in gui.
+    // Show this message in gui.
+    NavigationViewModel.instance.showErrorNotification(err);
 });
 
 

@@ -24,6 +24,14 @@ describe('Monero Wallet - local functions', () => {
         assert.equal(keys.publicAddress, "43Pzz5GFHzG4VSvoR1zievZmQ3ABZppFagWsQkdpLwV2JMmu2LLU5GgHmSbVqc7dBMAYi49BHXD3cTLWX3D4LX8k4q1AXQf");
     });
 
+    it('Should create account keys from private key #2', () => {
+        let privateKey = '6ee9aef42ea857ed823fad4e0f507fe5f9bf25a090cc33914296814fe86abe35';
+        let keys = MoneroWallet.createAddressKeysFromPrivateKey(privateKey);
+        assert.equal(keys.mnemonic, "also ringing powder nuns python optical trendy building jaunt delayed loyal idols audio galaxy vogue welders heels video dime ridges aisle oozed picked toolbox heels");
+        assert.equal(keys.privateKeys.spend, privateKey);
+        assert.equal(keys.publicAddress, "46ovAuz8XPTCKeXJsWKs6rN6REZMHrsy8MYJECB7jzS5dviR9RQqLWpZ5D23W8tgvsbUcjWyGGeRQLoeK3idLjNqHPSBo6B");
+    });
+
 });
 
 describe('Monero Wallet - MyMonero API', () => {
@@ -64,7 +72,7 @@ describe('Monero Wallet - MyMonero API', () => {
         let sendResult = await moneroWallet.sendFunds(toAddress, "0.00001");
         console.log(sendResult);
         assert.equal(sendResult.toAddress, toAddress);
-        assert.equal(sendResult.sentAmount, 0);
+        assert.isAbove(sendResult.sentAmount, 0);
     });
 
 });

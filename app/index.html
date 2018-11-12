@@ -12,7 +12,7 @@
 
     <div class="container">
 
-        <nav class="nav nav-masthead justify-content-end">
+        <nav class="nav nav-masthead justify-content-end d-none" id="blockstack-account-navbar">
             <span class="nav-link active" id="blockstack-account-name"></span>
             <button type="button" class="btn btn-link" id="blockstack-account-sign-out">Sign out</button>
         </nav>
@@ -29,7 +29,13 @@
             </p>
         </div>
 
-        <div class="row mb-4">
+        <div id="login-page">
+            <div class="row justify-content-md-center">
+                <button type="button" class="col-6 btn btn-info btn-lg btn-block" id="login-button">Sign in with Bockstack ID</button>
+            </div>
+        </div>
+
+        <div class="row mb-4 d-none" id="wallet-info-display">
             <div class="col-9">
                 <div class="card h-100">
                     <div class="card-body">
@@ -58,7 +64,8 @@
             </div>
         </div>
 
-        <div id="transactions-page">
+
+        <div id="transactions-page" class="d-none">
             <button type="button" class="btn btn-info btn-lg btn-block" id="send-monero-page-button">Send Monero</button>
             <table class="table mt-4">
                 <thead>
@@ -77,7 +84,7 @@
             <table style="display:none">
                 <tbody id="transaction-row-template">
                     <tr class='transaction-row'>
-                        <th class="text-monospace"><span class="transaction-value"></span></th>
+                        <th class="text-monospace"><span class="transaction-value"></span><code class="transaction-unconfirmed pl-1"></code></th>
                         <td><span class="transaction-date"></span></td>
                         <td class="text-monospace"><span class="transaction-mixin"></span></td>
                         <td class="text-monospace"><code class="text-muted transaction-hash"></code></td>
@@ -87,7 +94,7 @@
         </div>
 
 
-        <div id="send-monero-page" style="display:none">
+        <div class="d-none" id="send-monero-page">
             <form id="send-monero-form">
                 <div class="form-group">
                     <label for="send-address-receiver" class="col-form-label">To Address</label>

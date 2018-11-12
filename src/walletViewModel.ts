@@ -38,6 +38,7 @@ class TransactionRow {
         txRowElement.querySelector<HTMLSpanElement>('.transaction-date')!.innerText = tx.timestamp.toLocaleString();
         txRowElement.querySelector<HTMLSpanElement>('.transaction-mixin')!.innerText = tx.mixin.toString();
         txRowElement.querySelector<HTMLSpanElement>('.transaction-hash')!.innerText = tx.hash;
+        txRowElement.querySelector<HTMLSpanElement>('.transaction-unconfirmed')!.innerHTML = tx.confirmations < 5 ? "unconfirmed" : '';
         txRowElement.dataset[this._txHashDataKey] =  tx.hash;
     }
 }
@@ -193,8 +194,7 @@ export class WalletViewModel {
         // for each tx is probably inefficient. 
 
         // TODO: Implement pagination (or table w/ element reuse) for lots of rows (hopefully find any existing simple lib).
-
-        txs.forEach(txInfo => {
+        txs.reverse().forEach(txInfo => {
 
             let txRowElement: HTMLElement | undefined;
 
