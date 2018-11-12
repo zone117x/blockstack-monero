@@ -4,10 +4,8 @@ import * as mymonero_core from '../libs/mymonero-app-js/local_modules/mymonero_c
 import request from 'request';
 import { BigInteger} from '../libs/mymonero-app-js/local_modules/mymonero_core_js/cryptonote_utils/biginteger';
 
-// TODO: switch usage of BigNumber to BigInteger
-
-// Define the interface for this type - typescript gets confused parsing its javascript exports.
-const moneyFormat: MoneyFormatUtils = mymonero_core.monero_amount_format_utils!;
+// Define the interface for this type - typescript gets confused parsing its javascript export chain.
+export const moneyFormatUtils: MoneyFormatUtils = mymonero_core.monero_amount_format_utils!;
 
 
 /** 
@@ -231,10 +229,10 @@ export class MoneroWallet {
 						let info: BalanceInfoResult = {
 
 							// These amount values are an integer (piconero / smallest units), convert to human readable string.
-							totalReceived: moneyFormat.formatMoney(totalReceived),
-							lockedBalance: moneyFormat.formatMoney(lockedBalance),
-							totalSent: moneyFormat.formatMoney(totalSent),
-							balance: moneyFormat.formatMoney(balance),
+							totalReceived: moneyFormatUtils.formatMoney(totalReceived),
+							lockedBalance: moneyFormatUtils.formatMoney(lockedBalance),
+							totalSent: moneyFormatUtils.formatMoney(totalSent),
+							balance: moneyFormatUtils.formatMoney(balance),
 
 							balanceEur: '',
 							balanceUsd: '',
@@ -253,10 +251,10 @@ export class MoneroWallet {
 
 						if (info.ratesBySymbol) {
 							if (info.ratesBySymbol.USD) {
-								info.balanceUsd = moneyFormat.formatMoney(balance.multiply(info.ratesBySymbol.USD))
+								info.balanceUsd = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.USD))
 							}
 							if (info.ratesBySymbol.EUR) {
-								info.balanceEur = moneyFormat.formatMoney(balance.multiply(info.ratesBySymbol.EUR));
+								info.balanceEur = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.EUR));
 							}
 						}
 
@@ -291,9 +289,9 @@ export class MoneroWallet {
 						// Convert some properties on the transaction objects to be more useful for us.
 						let resultTxs: any[] = result[5];
 						let txs = resultTxs.map(tx => <TransactionInfo>{
-							amount: tx.amount.toString(),
-							totalReceived: tx.total_received.toString(),
-							totalSent: tx.total_sent.toString(),
+							amount: moneyFormatUtils.formatMoney(tx.amount),
+							totalReceived: moneyFormatUtils.formatMoney(tx.total_received),
+							totalSent: moneyFormatUtils.formatMoney(tx.total_sent),
 							coinbase: tx.coinbase,
 							hash: tx.hash,
 							height: tx.height,
@@ -384,7 +382,7 @@ export class MoneroWallet {
 
 // ---- Interfaces -----
 
-interface MoneyFormatUtils {
+export interface MoneyFormatUtils {
 	formatMoneyFull(units: string | BigInteger);
 	formatMoneyFullSymbol(units: string | BigInteger);
 	formatMoney(units: string | BigInteger);
@@ -392,7 +390,7 @@ interface MoneyFormatUtils {
 	parseMoney(value: string);
 }
 
-interface AddressKeys {
+export interface AddressKeys {
 	readonly mnemonic: string,
 	readonly mnemonicLanguage: string;
 	readonly publicAddress: string;
@@ -400,7 +398,7 @@ interface AddressKeys {
 	readonly publicKeys: { readonly view: string, readonly spend: string }
 }
 
-interface SendFundsResult {
+export interface SendFundsResult {
 	toAddress;
 	sentAmount;
 	paymentId;
@@ -410,7 +408,7 @@ interface SendFundsResult {
 	mixin;
 }
 
-interface AccountStateInfo {
+export interface AccountStateInfo {
 	accountScannedTxHeight: number,
 	accountScannedBlockHeight: number,
 	accountScanStartHeight: number,
@@ -418,7 +416,7 @@ interface AccountStateInfo {
 	blockchainHeight: number,
 }
 
-interface BalanceInfoResult extends AccountStateInfo {
+export interface BalanceInfoResult extends AccountStateInfo {
 	totalReceived: string,
 	totalSent: string,
 	lockedBalance: string,
@@ -429,12 +427,14 @@ interface BalanceInfoResult extends AccountStateInfo {
 	ratesBySymbol: { [ symbol: string ]: number | undefined } | undefined
 }
 
-interface TransactionsResult extends AccountStateInfo {
+export interface TransactionsResult extends AccountStateInfo {
 	transactions: TransactionInfo[]
 }
 
-interface TransactionInfo {
-	amount: string,
+export interface TransactionInfo {
+	amount: string,	
+	totalReceived: string,
+	totalSent: string,
 	coinbase: boolean,
 	hash: string,
 	height: number,
@@ -442,8 +442,6 @@ interface TransactionInfo {
 	mempool: boolean,
 	mixin: number,
 	timestamp: Date,
-	totalReceived: string,
-	totalSent: string,
 	unlockTime: number,
 	paymentId: string | null
 }

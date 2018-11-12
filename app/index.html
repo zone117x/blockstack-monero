@@ -70,18 +70,17 @@
                     <th scope="col">Transaction ID</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <th class="text-monospace">-0.000074256031</th>
-                    <td>10 November 2018 13:32:11</td>
-                    <td class="text-monospace">10</td>
-                    <td class="text-monospace">a6043dee868faf88c138505ffda9bc56756dc663370422322c541ec2b69dd18c</td>
-                </tr>
-                <tr>
-                    <th class="text-monospace">-0.000045603166</th>
-                    <td>10 November 2018 10:33:27</td>
-                    <td class="text-monospace">10</td>
-                    <td class="text-monospace">10cdd8a0c981cd0d45fc7fd79602e5df384e1ee3d6d4e957c263e015124d8806</td>
+            <tbody id="transaction-table-body">
+            </tbody>
+        </table>
+
+        <table style="display: none">
+            <tbody id="transaction-row-template">
+                <tr class='transaction-row'>
+                    <th class="text-monospace"><span class="transaction-value"></span></th>
+                    <td><span class="transaction-date"></span></td>
+                    <td class="text-monospace"><span class="transaction-mixin"></span></td>
+                    <td class="text-monospace"><code class="text-muted transaction-hash"></code></td>
                 </tr>
             </tbody>
         </table>

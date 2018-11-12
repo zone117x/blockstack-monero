@@ -1,8 +1,6 @@
 
 class View {
-    static get blockStackAccountName() : HTMLSpanElement {
-        return document.getElementById('blockstack-account-name')!;
-    }
+    static get blockStackAccountName() { return document.querySelector<HTMLSpanElement>('#blockstack-account-name')! }
 }
 
 export class BlockstackAccountViewModel {
