@@ -5,7 +5,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const outputDir = "app";
 
 module.exports = {
-    entry: './dist/main.js',
+    entry: './src/main.ts',
     mode: 'production',
     devtool: "source-map",
     optimization: {
@@ -13,7 +13,7 @@ module.exports = {
     },
     module: {
         rules: [
-            {
+            /*{
                 test: /\.js$/,
                 exclude: [/node_modules/],
                 use: [
@@ -24,6 +24,11 @@ module.exports = {
                         }
                     }
                 ]
+            },*/
+            {
+                test: /\.ts?$/,
+                use: 'ts-loader',
+                exclude: /node_modules/
             },
             {
                 test: [
@@ -47,6 +52,7 @@ module.exports = {
         ]
     },
     resolve: {
+        extensions: [ '.ts', '.js' ],
         alias: {
             "fs": "html5-fs",
             "request$": "xhr"

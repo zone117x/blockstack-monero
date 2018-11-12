@@ -17,13 +17,32 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Launch ts-node",
+            "protocol": "inspector",
+            "args": [
+                "${workspaceFolder}/src/main.ts",
+            ],
+            "cwd": "${workspaceRoot}",
+            "runtimeArgs": [
+                "-r",
+                "ts-node/register"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Mocha Tests",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
-                "--require", "ts-node/register",
-                "-u", "tdd",
-                "--timeout", "999999",
-                "--colors", "--recursive",
+                "--require",
+                "ts-node/register",
+                "-u",
+                "tdd",
+                "--timeout",
+                "999999",
+                "--colors",
+                "--recursive",
                 "${workspaceFolder}/src/test.ts"
             ],
             "internalConsoleOptions": "openOnSessionStart"

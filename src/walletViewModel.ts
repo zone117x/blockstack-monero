@@ -1,4 +1,5 @@
 import { MoneroWallet, TransactionInfo } from './moneroWallet';
+import { NavigationViewModel } from './navigationViewModel';
 
 /** Getters for the various wallet related DOM elements. */
 class View {
@@ -9,6 +10,9 @@ class View {
     static get transactionRowTemplate() { return document.querySelector<HTMLElement>('#transaction-row-template')! }
     static get transactionTableBody() { return document.querySelector<HTMLElement>('#transaction-table-body')! }
     static get transactionRows() { return this.transactionTableBody.querySelectorAll<HTMLElement>('.transaction-row') }
+    static get sendMoneroForm() { return document.querySelector<HTMLFormElement>('#send-monero-form')! }
+    static get sendAddressReceiver() { return document.querySelector<HTMLInputElement>('#send-address-receiver')! }
+    static get sendAmount() { return document.querySelector<HTMLInputElement>('#send-amount')! }
 }
 
 /** Helper util for transaction row elements. */
@@ -32,10 +36,51 @@ export class WalletViewModel {
     _isPolling: boolean = false;
     _pollerID: number | undefined;
 
+    readonly _disposals: (() => void)[] = [];
 
     constructor (wallet: MoneroWallet) {
         this._wallet = wallet;
         this.setAccountDisplayDetails();
+        this.hookupSendMoneroSubmitForm();
+    }
+
+    // Subscribe to the send monero form submit action.
+    hookupSendMoneroSubmitForm() {
+        const _this = this;
+        const onSubmitFunc = (ev: Event) => {
+            // Prevent browser POST.
+            ev.preventDefault();
+            _this.sendMoneroFormAction()
+            .then(() => {
+                // Success! Return to the transaction page and show notification.
+                NavigationViewModel.instance.showTransactionsPage();
+                NavigationViewModel.instance.showSuccessNotification("Transaction sent!");
+            })
+            .catch(err => {
+                // Problem sending transaction - show error notification.
+                NavigationViewModel.instance.showErrorNotification(err);
+                console.log(err);
+            });
+            return false;
+        }
+        View.sendMoneroForm.addEventListener('submit', onSubmitFunc);
+
+        // Register the event handler for removal when the wallet view is disposed.
+        this._disposals.push(() => View.sendMoneroForm.removeEventListener('submit', onSubmitFunc));
+    }
+
+    async sendMoneroFormAction() {
+
+        // Get user input
+        const toAddress = View.sendAddressReceiver.value;
+        const sendAmount = View.sendAmount.value;
+
+        // Attempt to send transaction (errors are handled by the promise caller).
+        await this._wallet.sendFunds(toAddress, sendAmount);
+
+        // Clear inputs.
+        View.sendAddressReceiver.value = '';
+        View.sendAmount.value = '';
     }
 
     setAccountDisplayDetails() {
@@ -47,6 +92,7 @@ export class WalletViewModel {
         if (!this._isPolling) {
             this._isPolling = true;
             this._pollerID = window.setInterval(() => this.refreshData(), 15000);
+            this._disposals.push(() => this.stopPolling());
         }
     }
 
@@ -60,24 +106,25 @@ export class WalletViewModel {
 
     refreshData() {
         // Kick off both update requests at the same time.
-        this.loadMoneroTransactions().catch(this.showUpdateError);
-        this.loadBalanceInfo().catch(this.showUpdateError);
+        this.loadMoneroTransactions().catch(err => this.showUpdateError(err));
+        this.loadBalanceInfo().catch(err => this.showUpdateError(err));
     }
 
     showUpdateError(err) {
+        // Show errors as notifications.
+        NavigationViewModel.instance.showErrorNotification(err);
+        console.log(err);
         throw err;
-        // TODO: Show errors in a cleanly stack-able way (imagine 100 of these happening over time).
     }
     
     async loadBalanceInfo() {
         let walletInfo = await this._wallet.getBalanceInfo();
         console.log(walletInfo);
 
+        // Update the DOM with balance info.
         View.balanceXmr.innerText = walletInfo.balance;
         View.balanceUsd.innerText = walletInfo.balanceUsd;
         View.balanceEur.innerText = walletInfo.balanceEur;
-
-        // TODO: Update the DOM with balance info.
     }
     
     async loadMoneroTransactions() {
@@ -119,7 +166,8 @@ export class WalletViewModel {
     }
 
     dispose() {
-        // TODO: disconnect from any DOM subscriptions or references.
+        this._disposals.forEach(disposeFn => disposeFn());
+        this._disposals.length = 0;
     }
     
 }

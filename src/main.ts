@@ -1,6 +1,7 @@
 import { MoneroWallet } from './moneroWallet';
 import { WalletViewModel } from './walletViewModel';
 import { BlockstackAccountViewModel } from './blockstackAccountViewModel';
+import { NavigationViewModel } from './navigationViewModel';
 import * as blockstack from 'blockstack';
 import { detect } from 'detect-browser';
 
@@ -33,7 +34,7 @@ async function main() {
     }
     else if (!isUserSignedIn) {
         if (NODE_ENV) {
-            performNodeSignIn();
+            await performNodeSignIn();
         }
         else {
             blockstack.redirectToSignIn();
@@ -48,6 +49,9 @@ async function main() {
 
     // Pass Blockstack user data to viewmodel for displaying info and allowing logout. 
     let blockstackAccountViewModel = new BlockstackAccountViewModel(userData);
+
+    NavigationViewModel.initialize();
+
 
     // Initialize the monero util (loads the large-ish WASM module).
     await MoneroWallet.initialize();

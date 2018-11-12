@@ -30,18 +30,10 @@
             "problemMatcher": []
         },
         {
-            "label": "npm: start",
+            "label": "Launch Dev Environment",
             "type": "npm",
             "script": "start",
             "isBackground": true,
-            "problemMatcher": []
-        },
-        {
-            "label": "Run Dev Environment",
-            "dependsOn": [
-                "typescript: watch",
-                "npm: start"
-            ],
             "problemMatcher": []
         }
     ]

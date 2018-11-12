@@ -1,6 +1,7 @@
 
 class View {
     static get blockStackAccountName() { return document.querySelector<HTMLSpanElement>('#blockstack-account-name')! }
+    static get signOutButton() { return document.querySelector<HTMLButtonElement>('#blockstack-account-sign-out')! }
 }
 
 export class BlockstackAccountViewModel {
@@ -25,5 +26,9 @@ export class BlockstackAccountViewModel {
     signOut() {
 
         this._onSignOutListeners.forEach(listener => listener());
+    }
+
+    dispose() {
+        
     }
 }

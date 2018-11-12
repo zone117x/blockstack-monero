@@ -4,6 +4,8 @@
 <head>
     <title>Monero client-side web wallet using Blockstack</title>
     <link rel="stylesheet" href="bootstrap.min.css">
+    <link rel="stylesheet" href="alertify.min.css">
+    <link rel="stylesheet" href="alertify.theme.default.min.css">
 </head>
 
 <body class="bg-light">
@@ -15,18 +17,19 @@
             <button type="button" class="btn btn-link" id="blockstack-account-sign-out">Sign out</button>
         </nav>
 
-        <div class="py-5 text-center">
+        <div class="py-3 text-center">
             <h2>Monero web wallet</h2>
             <p class="lead">
                 Use your Blockstack account to easily send and receive Monero.
                 <br>
                 Your private keys are only ever used client side.
                 <br>
-                This wallet app uses the <a target="blank" href="https://github.com/mymonero/hosted-monero-api-spec/blob/e4632679d46d3b6e2b5446c65f55bdacefdadac6/mymonero_api.md">MyMonero API</a>.
+                This wallet app uses the <a target="blank" href="https://github.com/mymonero/hosted-monero-api-spec/blob/e4632679d46d3b6e2b5446c65f55bdacefdadac6/mymonero_api.md">MyMonero
+                    API</a>.
             </p>
         </div>
 
-        <div class="row">
+        <div class="row mb-4">
             <div class="col-9">
                 <div class="card h-100">
                     <div class="card-body">
@@ -35,7 +38,7 @@
                             <code id="account-public-address" class="text-dark">&nbsp;</code>
                         </p>
                         <div class="row">
-                            <button type="button" class="col btn btn-secondary btn-sm mx-3">Account Details</button>
+                            <button type="button" class="col btn btn-secondary btn-sm ml-3">Account Details</button>
                             <button type="button" class="col btn btn-secondary btn-sm mx-3" data-clipboard-target="#account-public-address">Copy</button>
                         </div>
                     </div>
@@ -55,43 +58,66 @@
             </div>
         </div>
 
-        <br />
+        <div id="transactions-page">
+            <button type="button" class="btn btn-info btn-lg btn-block" id="send-monero-page-button">Send Monero</button>
+            <table class="table mt-4">
+                <thead>
+                    <tr>
+                        <th scope="col">Value (XMR)</th>
+                        <th scope="col">Date Received</th>
+                        <th scope="col">Mixin</th>
+                        <th scope="col">Transaction ID</th>
+                    </tr>
+                </thead>
+                <tbody id="transaction-table-body">
+                </tbody>
+            </table>
 
-        <button type="button" class="btn btn-info btn-lg btn-block">Send Monero</button>
+            <!-- Transaction row template -->
+            <table style="display:none">
+                <tbody id="transaction-row-template">
+                    <tr class='transaction-row'>
+                        <th class="text-monospace"><span class="transaction-value"></span></th>
+                        <td><span class="transaction-date"></span></td>
+                        <td class="text-monospace"><span class="transaction-mixin"></span></td>
+                        <td class="text-monospace"><code class="text-muted transaction-hash"></code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <br />
 
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col">Value (XMR)</th>
-                    <th scope="col">Date Received</th>
-                    <th scope="col">Mixin</th>
-                    <th scope="col">Transaction ID</th>
-                </tr>
-            </thead>
-            <tbody id="transaction-table-body">
-            </tbody>
-        </table>
-
-        <table style="display: none">
-            <tbody id="transaction-row-template">
-                <tr class='transaction-row'>
-                    <th class="text-monospace"><span class="transaction-value"></span></th>
-                    <td><span class="transaction-date"></span></td>
-                    <td class="text-monospace"><span class="transaction-mixin"></span></td>
-                    <td class="text-monospace"><code class="text-muted transaction-hash"></code></td>
-                </tr>
-            </tbody>
-        </table>
+        <div id="send-monero-page" style="display:none">
+            <form id="send-monero-form">
+                <div class="form-group">
+                    <label for="send-address-receiver" class="col-form-label">To Address</label>
+                    <input type="text" class="form-control" id="send-address-receiver" placeholder="Monero address e.g. 42pVXU53GnA24zoiBpvcwsGEcnXvjdAG2aScfMW7Kkck9ftGfpb9pwRXUQAas2e8jKHYKvXaZNosGYAqwJYwhbCu7KjkYxo">
+                </div>
+                <div class="form-group">
+                    <label for="send-amount" class="col-form-label">Amount to Send</label>
+                    <input type="text" class="form-control" id="send-amount" placeholder="0.1">
+                </div>
+                <div class="row mb-4 p-3">
+                    <button type="submit" class="col btn btn-primary">Send</button>
+                    <button type="button" class="col-4 btn btn-secondary ml-4" id="cancel-send-button">Cancel</button>
+                </div>
+            </form>
+        </div>
 
     </div>
+
 </body>
 
 <script src="jquery-3.3.1.min.js"></script>
 <script src="bootstrap.bundle.min.js"></script>
 <script src="clipboard.min.js"></script>
-<script>new ClipboardJS('button');</script>
+<script src="alertify.min.js"></script>
+
+<script>
+    new ClipboardJS('button');
+    $('.alert').alert();
+</script>
+
 <script src="app.bundle.js"></script>
 
 </html>
