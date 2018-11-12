@@ -69,6 +69,10 @@ export class NavigationViewModel {
         (window as any).alertify.success(message);
     }
 
+    showMessageNotification(message: string) {
+        (window as any).alertify.message(message);
+    }
+
     setDisplayForSignedIn(isSignedIn: boolean) {
         if (isSignedIn) {
             // Hide the sign in page.

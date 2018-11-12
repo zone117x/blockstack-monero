@@ -38,7 +38,7 @@ class TransactionRow {
         txRowElement.querySelector<HTMLSpanElement>('.transaction-date')!.innerText = tx.timestamp.toLocaleString();
         txRowElement.querySelector<HTMLSpanElement>('.transaction-mixin')!.innerText = tx.mixin.toString();
         txRowElement.querySelector<HTMLSpanElement>('.transaction-hash')!.innerText = tx.hash;
-        txRowElement.querySelector<HTMLSpanElement>('.transaction-unconfirmed')!.innerHTML = tx.confirmations < 5 ? "unconfirmed" : '';
+        txRowElement.querySelector<HTMLSpanElement>('.transaction-unconfirmed')!.innerHTML = tx.confirmations < 10 ? "unconfirmed" : '';
         txRowElement.dataset[this._txHashDataKey] =  tx.hash;
     }
 }
@@ -78,12 +78,15 @@ export class WalletViewModel {
 
     async sendMoneroFormAction() {
         try {
-            // Get user input
+            // Get user input.
             const toAddress = View.sendAddressReceiver.value;
             const sendAmount = View.sendAmount.value;
 
             // Attempt to send transaction (errors are handled by the promise caller).
-            await this._wallet.sendFunds(toAddress, sendAmount);
+            await this._wallet.sendFunds(toAddress, sendAmount, statusMsg => {
+                // Show transaction status update messages as notifications.
+                NavigationViewModel.instance.showMessageNotification(statusMsg);
+            });
 
             // Success! Return to the transaction page and show notification.
             NavigationViewModel.instance.showTransactionsPage();

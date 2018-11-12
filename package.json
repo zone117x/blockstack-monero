@@ -38,7 +38,7 @@
   "scripts": {
     "test": "mocha --require ts-node/register src/test.ts",
     "compile": "tsc -p .",
-    "webpack": "webpack -d --display-modules",
+    "webpack": "webpack --display-modules",
     "watch": "webpack --config webpack.config.dev.js --watch",
     "start": "webpack-dev-server --config webpack.config.dev.js --open"
   },

@@ -2,7 +2,7 @@ import HostedMoneroAPIClient from '../libs/mymonero-app-js/local_modules/HostedM
 import BackgroundResponseParser from '../libs/mymonero-app-js/local_modules/HostedMoneroAPIClient/BackgroundResponseParser.web';
 import * as mymonero_core from '../libs/mymonero-app-js/local_modules/mymonero_core_js/index';
 import request from 'request';
-import { BigInteger} from '../libs/mymonero-app-js/local_modules/mymonero_core_js/cryptonote_utils/biginteger';
+import { BigInteger } from '../libs/mymonero-app-js/local_modules/mymonero_core_js/cryptonote_utils/biginteger';
 
 // Define the interface for this type - typescript gets confused parsing its javascript export chain.
 export const moneyFormatUtils: MoneyFormatUtils = mymonero_core.monero_amount_format_utils!;
@@ -17,7 +17,7 @@ export const moneyFormatUtils: MoneyFormatUtils = mymonero_core.monero_amount_fo
  * image processing for determining the account's transaction history.
  */
 export class MoneroWallet {
-    
+
     // Cache of the asynchronously loaded monero_utils object.
     static _moneroUtils;
 
@@ -125,7 +125,7 @@ export class MoneroWallet {
 
         // DEBUG: Perform some encoding consistency tests.. 
         const mnemonicTest: string = this.moneroUtils.mnemonic_from_seed(keys.sec_seed_string, wordSetLanguage);
-        if (mnemonicTest !== mnemonic){
+        if (mnemonicTest !== mnemonic) {
             throw new Error("Key derivation consistency problem");
         }
 
@@ -177,7 +177,7 @@ export class MoneroWallet {
      * Registers a newly created account. Must be called after locally generating account keys
      * so that the MyMonero service tracks the account transactions.
      */
-    registerNewAccount() : Promise<{alreadyRegistered: boolean}> {
+    registerNewAccount(): Promise<{ alreadyRegistered: boolean }> {
         // Wrap the client callback oriented function in a Promise.
         return new Promise((resolve, reject) => {
             try {
@@ -189,9 +189,10 @@ export class MoneroWallet {
                     (err, newAddress, receivedGeneratedLocally, startHeight) => {
                         if (err) {
                             reject(err);
-                            return;
                         }
-                        resolve({ alreadyRegistered: !newAddress });
+                        else {
+                            resolve({ alreadyRegistered: !newAddress });
+                        }
                     });
             }
             catch (err) {
@@ -202,10 +203,10 @@ export class MoneroWallet {
     }
 
 
-    getBalanceInfo(): Promise<BalanceInfoResult> {
+    async getBalanceInfo(): Promise<BalanceInfoResult> {
 
         // Wrap the client callback oriented function in a Promise.
-        return new Promise((resolve, reject) => {
+        const result = await new Promise<any[]>((resolve, reject) => {
             try {
                 this._apiClient.AddressInfo_returningRequestHandle(
                     this._addressKeys.publicAddress,
@@ -213,52 +214,12 @@ export class MoneroWallet {
                     this._addressKeys.publicKeys.spend,
                     this._addressKeys.privateKeys.spend,
                     (err, ...result: any[]) => {
-
                         if (err) {
                             reject(err);
-                            return;
                         }
-
-                        const totalReceived : BigInteger = result[0];
-                        const lockedBalance : BigInteger = result[1];
-                        const totalSent : BigInteger = result[2];
-                        const balance : BigInteger = totalReceived.subtract(totalSent);
-
-                        // The MyMonero API client returns all this data in the form of callback args, oh my.
-                        // Whip this argument list into a manageable object.
-                        let info: BalanceInfoResult = {
-
-                            // These amount values are an integer (piconero / smallest units), convert to human readable string.
-                            totalReceived: moneyFormatUtils.formatMoney(totalReceived),
-                            lockedBalance: moneyFormatUtils.formatMoney(lockedBalance),
-                            totalSent: moneyFormatUtils.formatMoney(totalSent),
-                            balance: moneyFormatUtils.formatMoney(balance),
-
-                            balanceEur: '',
-                            balanceUsd: '',
-
-                            spentOutputs: result[3],
-
-                            accountScannedTxHeight: result[4],
-                            accountScannedBlockHeight: result[5],
-                            accountScanStartHeight: result[6],
-
-                            transactionHeight: result[7],
-                            blockchainHeight: result[8],
-
-                            ratesBySymbol: result[9]
-                        };
-
-                        if (info.ratesBySymbol) {
-                            if (info.ratesBySymbol.USD) {
-                                info.balanceUsd = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.USD))
-                            }
-                            if (info.ratesBySymbol.EUR) {
-                                info.balanceEur = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.EUR));
-                            }
+                        else {
+                            resolve(result);
                         }
-
-                        resolve(info);
                     }
                 );
             }
@@ -267,12 +228,54 @@ export class MoneroWallet {
                 reject(err);
             }
         });
+
+
+        const totalReceived: BigInteger = result[0];
+        const lockedBalance: BigInteger = result[1];
+        const totalSent: BigInteger = result[2];
+        const balance: BigInteger = totalReceived.subtract(totalSent);
+
+        // The MyMonero API client returns all this data in the form of callback args, oh my.
+        // Whip this argument list into a manageable object.
+        let info: BalanceInfoResult = {
+
+            // These amount values are an integer (piconero / smallest units), convert to human readable string.
+            totalReceived: moneyFormatUtils.formatMoney(totalReceived),
+            lockedBalance: moneyFormatUtils.formatMoney(lockedBalance),
+            totalSent: moneyFormatUtils.formatMoney(totalSent),
+            balance: moneyFormatUtils.formatMoney(balance),
+
+            balanceEur: '',
+            balanceUsd: '',
+
+            spentOutputs: result[3],
+
+            accountScannedTxHeight: result[4],
+            accountScannedBlockHeight: result[5],
+            accountScanStartHeight: result[6],
+
+            transactionHeight: result[7],
+            blockchainHeight: result[8],
+
+            ratesBySymbol: result[9]
+        };
+
+        if (info.ratesBySymbol) {
+            if (info.ratesBySymbol.USD) {
+                info.balanceUsd = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.USD))
+            }
+            if (info.ratesBySymbol.EUR) {
+                info.balanceEur = moneyFormatUtils.formatMoney(balance.multiply(info.ratesBySymbol.EUR));
+            }
+        }
+
+        return info;
     }
 
-    getTransactions(): Promise<TransactionsResult> {
+    async getTransactions(): Promise<TransactionsResult> {
 
         // Wrap the client callback oriented function in a Promise.
-        return new Promise((resolve, reject) => {
+        const result = await new Promise<any[]>((resolve, reject) => {
             try {
                 this._apiClient.AddressTransactions_returningRequestHandle(
                     this._addressKeys.publicAddress,
@@ -280,41 +283,12 @@ export class MoneroWallet {
                     this._addressKeys.publicKeys.spend,
                     this._addressKeys.privateKeys.spend,
                     (err, ...result) => {
-
                         if (err) {
                             reject(err);
-                            return;
                         }
-
-                        // Turn these unruly callback function args into an object. 
-                        let txResult = <TransactionsResult> {
-                            accountScannedTxHeight: result[0],
-                            accountScannedBlockHeight: result[1],
-                            accountScanStartHeight: result[2],
-                            transactionHeight: result[3],
-                            blockchainHeight: result[4]
-                        };
-
-                        // Convert some properties on the transaction objects to be more useful for us.
-                        let resultTxs: any[] = result[5];
-                        let txs = resultTxs.map(tx => <TransactionInfo>{
-                            amount: moneyFormatUtils.formatMoney(tx.amount),
-                            totalReceived: moneyFormatUtils.formatMoney(tx.total_received),
-                            totalSent: moneyFormatUtils.formatMoney(tx.total_sent),
-                            coinbase: tx.coinbase,
-                            hash: tx.hash,
-                            height: tx.height,
-                            id: tx.id,
-                            mempool: tx.mempool,
-                            mixin: tx.mixin,
-                            timestamp: tx.timestamp,
-                            unlockTime: tx.unlock_time,
-                            confirmations: txResult.blockchainHeight - tx.height
-                        });
-
-                        txResult.transactions = txs;
-
-                        resolve(txResult);
+                        else {
+                            resolve(result);
+                        }
                     }
                 );
             }
@@ -323,16 +297,55 @@ export class MoneroWallet {
                 reject(err);
             }
         });
+
+        // console.log(result);
+
+        // Turn these unruly callback function args into an object. 
+        let txResult = <TransactionsResult>{
+            accountScannedTxHeight: result[0],
+            accountScannedBlockHeight: result[1],
+            accountScanStartHeight: result[2],
+            transactionHeight: result[3],
+            blockchainHeight: result[4]
+        };
+
+        // Convert some properties on the transaction objects to be more useful for us.
+        let resultTxs: any[] = result[5];
+        let txs = resultTxs.map(tx => <TransactionInfo>{
+            amount: moneyFormatUtils.formatMoney(tx.amount),
+            totalReceived: moneyFormatUtils.formatMoney(tx.total_received),
+            totalSent: moneyFormatUtils.formatMoney(tx.total_sent),
+            approximateAmount: tx.approx_float_amount,
+            coinbase: tx.coinbase,
+            hash: tx.hash,
+            height: tx.height,
+            id: tx.id,
+            mempool: tx.mempool,
+            mixin: tx.mixin,
+            timestamp: tx.timestamp,
+            unlockTime: tx.unlock_time,
+            confirmations: txResult.blockchainHeight - tx.height
+        });
+
+        txResult.transactions = txs;
+
+        return txResult;
     }
 
-    sendFunds(toAddress: string, amount: string, testnet = false): Promise<SendFundsResult> {
+    /**
+     * 
+     * @param toAddress Receiver address.
+     * @param amount Amount to send as a string so caller does not have to worry about precision when parsing user input.
+     * @param statusCallback Optional callback to receive status update messages during the transaction process.
+     */
+    sendFunds(toAddress: string, amount: string, statusCallback?: (message: string) => void): Promise<SendFundsResult> {
 
         // Wrap the client callback oriented function in a Promise.
         return new Promise((resolve, reject) => {
 
             try {
 
-                const networkType = MoneroWallet.getNetworkID(testnet);
+                const networkType = MoneroWallet.getNetworkID(false);
 
                 // Some hardcoded options (that not specifiable in GUI yet..)
                 const txPriority = 1; // normal priority
@@ -353,7 +366,11 @@ export class MoneroWallet {
                     txPriority,
                     code => {
                         // Intermediate status callback..
-                        console.log("Send funds step " + code + ": " + mymonero_core.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code])
+                        const statusString = `Send funds step ${code}: ${mymonero_core.monero_sendingFunds_utils.SendFunds_ProcessStep_MessageSuffix[code]}`;
+                        console.log(statusString);
+                        if (statusCallback) {
+                            statusCallback(statusString);
+                        }
                     },
                     (...result) => {
                         // Transaction successful callback..
@@ -423,10 +440,10 @@ export interface BalanceInfoResult extends AccountStateInfo {
     totalSent: string,
     lockedBalance: string,
     balance: string,
-    balanceUsd : string,
+    balanceUsd: string,
     balanceEur: string,
     spentOutputs: any[],
-    ratesBySymbol: { [ symbol: string ]: number | undefined } | undefined
+    ratesBySymbol: { [symbol: string]: number | undefined } | undefined
 }
 
 export interface TransactionsResult extends AccountStateInfo {
@@ -434,7 +451,8 @@ export interface TransactionsResult extends AccountStateInfo {
 }
 
 export interface TransactionInfo {
-    amount: string,	
+    amount: string,
+    approximateAmount: number,
     totalReceived: string,
     totalSent: string,
     coinbase: boolean,
