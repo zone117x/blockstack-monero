@@ -37,7 +37,7 @@ async function main() {
 
             // Generates an authentication request and redirects the user to the Blockstack browser to approve the sign in request.
             // https://blockstack.github.io/blockstack.js/index.html#redirecttosignin
-            blockstack.redirectToSignIn();
+            blockstack.redirectToSignIn(window.location.origin + window.location.pathname, window.location.origin + window.location.pathname + 'manifest.json');
 
             // Since we are about to be redirected off the page, just continue back to waiting for
             // another sign in click. 
@@ -52,7 +52,7 @@ async function main() {
             // Try to process any pending sign in request by returning a Promise that resolves to the user data object if the sign in succeeds.
             try {
                 await blockstack.handlePendingSignIn();
-
+                isUserSignedIn = blockstack.isUserSignedIn();
                 // Cleanup the current window's url query after a pending sign.
                 try {
                     let curLocation = window.location.href;
@@ -75,7 +75,7 @@ async function main() {
             }
         }
 
-        else if (!isUserSignedIn) {
+        if (!isUserSignedIn) {
             throw new Error("Bad application state. How did we end up here? 🤔");
         }
 
