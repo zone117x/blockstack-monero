@@ -37,7 +37,11 @@ async function main() {
 
             // Generates an authentication request and redirects the user to the Blockstack browser to approve the sign in request.
             // https://blockstack.github.io/blockstack.js/index.html#redirecttosignin
-            blockstack.redirectToSignIn(window.location.origin + window.location.pathname, window.location.origin + window.location.pathname + 'manifest.json');
+            let manifestFile = "manifest.json";
+            if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+                manifestFile = "manifest.dev.json";
+            }
+            blockstack.redirectToSignIn(window.location.origin + window.location.pathname, window.location.origin + window.location.pathname + manifestFile);
 
             // Since we are about to be redirected off the page, just continue back to waiting for
             // another sign in click. 
