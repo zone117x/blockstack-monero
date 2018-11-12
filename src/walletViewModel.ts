@@ -4,6 +4,7 @@ import { NavigationViewModel } from './navigationViewModel';
 /** Getters for the various wallet related DOM elements. */
 class View {
     static get accountPublicAddress() { return document.querySelector<HTMLSpanElement>('#account-public-address')! }
+    static get accountDetailsButton() { return document.querySelector<HTMLButtonElement>('#account-details-button')! }
     static get balanceXmr() { return document.querySelector<HTMLSpanElement>('#balance-xmr')! }
     static get balanceUsd() { return document.querySelector<HTMLSpanElement>('#balance-usd')! }
     static get balanceEur() { return document.querySelector<HTMLSpanElement>('#balance-eur')! }
@@ -13,6 +14,17 @@ class View {
     static get sendMoneroForm() { return document.querySelector<HTMLFormElement>('#send-monero-form')! }
     static get sendAddressReceiver() { return document.querySelector<HTMLInputElement>('#send-address-receiver')! }
     static get sendAmount() { return document.querySelector<HTMLInputElement>('#send-amount')! }
+    static get accountDetailsTemplate() { return document.querySelector<HTMLElement>('#account-details-template')! }
+    static newAccountDetails() {
+        let accountDetails = this.accountDetailsTemplate.firstElementChild!.cloneNode(true) as HTMLElement;
+        return {
+            container: accountDetails,
+            address: accountDetails.querySelector<HTMLElement>('.account-details-address')!,
+            spendKey: accountDetails.querySelector<HTMLElement>('.account-details-spendkey')!,
+            viewKey: accountDetails.querySelector<HTMLElement>('.account-details-viewkey')!,
+            mnemonic: accountDetails.querySelector<HTMLElement>('.account-details-mnemonic')!
+        };
+    }
 }
 
 /** Helper util for transaction row elements. */
@@ -36,31 +48,25 @@ export class WalletViewModel {
     _isPolling: boolean = false;
     _pollerID: number | undefined;
 
+    // Functions to be called when this view model is disposed of (DOM disconnects, timer unloads, etc).
     readonly _disposals: (() => void)[] = [];
 
     constructor (wallet: MoneroWallet) {
         this._wallet = wallet;
         this.setAccountDisplayDetails();
         this.hookupSendMoneroSubmitForm();
+        this.hookupAccountDetailsButton();
     }
 
     // Subscribe to the send monero form submit action.
     hookupSendMoneroSubmitForm() {
+
+        // The 'this' scope is destroyed with the DOM callback setting it to the element.
         const _this = this;
         const onSubmitFunc = (ev: Event) => {
             // Prevent browser POST.
             ev.preventDefault();
-            _this.sendMoneroFormAction()
-            .then(() => {
-                // Success! Return to the transaction page and show notification.
-                NavigationViewModel.instance.showTransactionsPage();
-                NavigationViewModel.instance.showSuccessNotification("Transaction sent!");
-            })
-            .catch(err => {
-                // Problem sending transaction - show error notification.
-                NavigationViewModel.instance.showErrorNotification(err);
-                console.log(err);
-            });
+            _this.sendMoneroFormAction();
             return false;
         }
         View.sendMoneroForm.addEventListener('submit', onSubmitFunc);
@@ -70,17 +76,63 @@ export class WalletViewModel {
     }
 
     async sendMoneroFormAction() {
+        try {
+            // Get user input
+            const toAddress = View.sendAddressReceiver.value;
+            const sendAmount = View.sendAmount.value;
 
-        // Get user input
-        const toAddress = View.sendAddressReceiver.value;
-        const sendAmount = View.sendAmount.value;
+            // Attempt to send transaction (errors are handled by the promise caller).
+            await this._wallet.sendFunds(toAddress, sendAmount);
 
-        // Attempt to send transaction (errors are handled by the promise caller).
-        await this._wallet.sendFunds(toAddress, sendAmount);
+            // Success! Return to the transaction page and show notification.
+            NavigationViewModel.instance.showTransactionsPage();
+            NavigationViewModel.instance.showSuccessNotification("Transaction sent!");
+            
+            // Clear inputs.
+            View.sendAddressReceiver.value = '';
+            View.sendAmount.value = '';
+        }
+        catch (err) {
+            // Problem sending transaction - show error notification.
+            NavigationViewModel.instance.showErrorNotification(err);
+            console.log(err);
+        }
+    }
 
-        // Clear inputs.
-        View.sendAddressReceiver.value = '';
-        View.sendAmount.value = '';
+    // Setup the account button to show the account key details.
+    hookupAccountDetailsButton() {
+
+        // The 'this' scope is destroyed with the DOM callback setting it to the element.
+        const _this = this;
+        const onClick = (ev: Event) => _this.showAccountDetails();
+        View.accountDetailsButton.addEventListener('click', onClick);
+
+        // Register the event handler for removal when the wallet view is disposed.
+        this._disposals.push(() => View.accountDetailsButton.removeEventListener('click', onClick));
+    }
+
+    showAccountDetails() {
+
+        // Get a new account details DOM element.
+        let accountDetails = View.newAccountDetails();
+
+        // Populate element with info.
+        accountDetails.address.innerText = this._wallet.addressKeys.publicAddress;
+        accountDetails.viewKey.innerText = this._wallet.addressKeys.privateKeys.view;
+        accountDetails.spendKey.innerText = this._wallet.addressKeys.privateKeys.spend;
+        accountDetails.mnemonic.innerText = this._wallet.addressKeys.mnemonic;
+
+        // Show element in an alert.
+        (window as any).alertify.alert().setting({
+            title: "Account Details",
+            message: accountDetails.container,
+            maximizable: true,
+            transition: 'none',
+            onclose: () => {
+                // Dispose of element when alert is closed.
+                accountDetails.container.remove();
+            }
+        }).show();
     }
 
     setAccountDisplayDetails() {

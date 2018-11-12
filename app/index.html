@@ -38,7 +38,7 @@
                             <code id="account-public-address" class="text-dark">&nbsp;</code>
                         </p>
                         <div class="row">
-                            <button type="button" class="col btn btn-secondary btn-sm ml-3">Account Details</button>
+                            <button type="button" class="col btn btn-secondary btn-sm ml-3" id="account-details-button">Account Details</button>
                             <button type="button" class="col btn btn-secondary btn-sm mx-3" data-clipboard-target="#account-public-address">Copy</button>
                         </div>
                     </div>
@@ -102,6 +102,20 @@
                     <button type="button" class="col-4 btn btn-secondary ml-4" id="cancel-send-button">Cancel</button>
                 </div>
             </form>
+        </div>
+
+        <!-- Account details page template -->
+        <div style="display:none" id="account-details-template">
+            <div>
+                <h6>Public Account Address</h6>
+                <pre class="account-details-address"></pre>
+                <h6>Private View Key</h6>
+                <pre class="account-details-viewkey"></pre>
+                <h6>Private Spend Key</h6>
+                <pre class="account-details-spendkey"></pre>
+                <h6>Private Mnemonic</h6>
+                <pre class="account-details-mnemonic"></pre>
+            </div>
         </div>
 
     </div>
